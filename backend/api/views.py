@@ -172,7 +172,11 @@ class OfflineTokenView(APIView):
 
         key_path = Path(settings.BASE_DIR) / 'keys' / 'private_key.pem'
         if not key_path.exists():
-            return Response({'error': 'Server signing key not found'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            example_key_path = Path(settings.BASE_DIR) / 'keys' / 'private_key.pem.example'
+            if example_key_path.exists():
+                key_path = example_key_path
+            else:
+                return Response({'error': 'Server signing key not found'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         with open(key_path, 'rb') as f:
             private_key = serialization.load_pem_private_key(f.read(), password=None)

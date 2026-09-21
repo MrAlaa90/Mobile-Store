@@ -25,6 +25,12 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r backend/requirements.txt
 
+      - name: Setup test keys
+        run: |
+          if [ -f backend/keys/private_key.pem.example ]; then
+            cp backend/keys/private_key.pem.example backend/keys/private_key.pem
+          fi
+
       - name: Django System Check
         run: |
           cd backend
