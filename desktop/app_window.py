@@ -154,7 +154,7 @@ class StoreMainWindow(QWidget):
     Dark-themed POS Window precisely matching media_1789838350422.png & media_1789838350452.png
     Fully synced with Django Web API (Sales POS & Repairs Management)
     """
-    def __init__(self, username, access_token, license_info, is_offline=False, api_base_url="http://localhost:8000/api", db_path="local_storage.db", refresh_token=None, parent=None):
+    def __init__(self, username, access_token, license_info, is_offline=False, api_base_url="http://34.175.186.221/api", db_path="local_storage.db", refresh_token=None, parent=None):
         super().__init__(parent)
         self.username = username
         self.access_token = access_token

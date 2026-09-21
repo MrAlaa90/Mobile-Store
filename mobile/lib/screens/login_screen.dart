@@ -93,7 +93,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     controller: urlController,
                     decoration: const InputDecoration(
                       labelText: 'API Base URL',
-                      hintText: 'http://10.0.2.2:8000/api',
+                      hintText: 'http://34.175.186.221/api',
                       prefixIcon: Icon(Icons.link, color: Color(0xFF38BDF8)),
                     ),
                   ),
@@ -102,8 +102,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     spacing: 8,
                     children: [
                       ActionChip(
-                        label: const Text('Android (10.0.2.2)', style: TextStyle(fontSize: 11)),
-                        onPressed: () => setModalState(() => urlController.text = 'http://10.0.2.2:8000/api'),
+                        avatar: const Icon(Icons.cloud_done, size: 16, color: Color(0xFF38BDF8)),
+                        label: const Text('Google Cloud (Live)', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                        onPressed: () => setModalState(() => urlController.text = 'http://34.175.186.221/api'),
                       ),
                       ActionChip(
                         label: const Text('Localhost (8000)', style: TextStyle(fontSize: 11)),

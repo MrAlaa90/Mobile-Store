@@ -12,7 +12,7 @@ class StorageService {
   static const _keyBaseUrl = 'api_base_url';
   static const _keyUsername = 'saved_username';
 
-  static const defaultBaseUrl = 'http://192.168.100.8:8000/api';
+  static const defaultBaseUrl = 'http://34.175.186.221/api';
 
   Future<void> saveTokens({required String access, String? refresh}) async {
     await _storage.write(key: _keyAccess, value: access);

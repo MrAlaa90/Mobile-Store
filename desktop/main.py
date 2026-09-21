@@ -32,8 +32,8 @@ if BASE_DIR not in sys.path:
     sys.path.insert(0, BASE_DIR)
 from app_window import StoreMainWindow
 
-API_BASE_URL = os.environ.get("API_BASE_URL", "http://localhost:8000/api")
-WEB_URL = os.environ.get("WEB_URL", "http://localhost:5173/")
+API_BASE_URL = os.environ.get("API_BASE_URL", "http://34.175.186.221/api")
+WEB_URL = os.environ.get("WEB_URL", "http://34.175.186.221/")
 DB_FILE = os.path.join(BASE_DIR, "local_storage.db")
 PUBLIC_KEY_PATH = os.path.join(BASE_DIR, "keys", "public_key.pem")
 LICENSE_FILE = os.path.join(BASE_DIR, "license.json")
