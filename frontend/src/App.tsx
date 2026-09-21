@@ -38,9 +38,15 @@ function Login() {
       localStorage.setItem('username', username);
       toast.success(`مرحباً بك ${username}! تم تسجيل الدخول بنجاح`);
       navigate('/');
-    } catch {
-      setError('اسم المستخدم أو كلمة المرور غير صحيحة');
-      toast.error('فشل تسجيل الدخول - تحقق من البيانات');
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { detail?: string } } };
+      if (!axiosErr.response) {
+        setError(`تعذر الاتصال بالسيرفر (${api.defaults.baseURL}) - يرجى التأكد من تشغيل الباك إند وفتح المنفذ 8000 في جدار الحماية.`);
+        toast.error('تعذر الاتصال بالسيرفر');
+      } else {
+        setError(axiosErr.response.data?.detail || 'اسم المستخدم أو كلمة المرور غير صحيحة');
+        toast.error('فشل تسجيل الدخول - تحقق من البيانات');
+      }
     } finally {
       setLoading(false);
     }

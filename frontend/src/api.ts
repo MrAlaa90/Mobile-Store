@@ -1,7 +1,17 @@
 import axios from 'axios';
 
+export const getDefaultBaseUrl = (): string => {
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL;
+  }
+  if (typeof window !== 'undefined' && window.location.hostname) {
+    return `http://${window.location.hostname}:8000/api`;
+  }
+  return 'http://localhost:8000/api';
+};
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000/api',
+  baseURL: getDefaultBaseUrl(),
 });
 
 api.interceptors.request.use((config) => {
@@ -22,7 +32,7 @@ api.interceptors.response.use(
       if (refreshToken) {
         try {
           const res = await axios.post(
-            `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/auth/refresh/`,
+            `${getDefaultBaseUrl()}/auth/refresh/`,
             { refresh: refreshToken }
           );
           const newAccessToken = res.data.access;
