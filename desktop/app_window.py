@@ -5,7 +5,7 @@ import uuid
 from datetime import datetime
 
 import requests
-from PyQt6.QtCore import Qt, QKeyCombination
+from PyQt6.QtCore import Qt, QKeyCombination, QTimer
 from PyQt6.QtGui import QKeySequence, QShortcut, QFont, QColor
 from PyQt6.QtWidgets import (
     QCheckBox,
@@ -25,6 +25,8 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+
+from sync_worker import SyncWorker
 
 
 REPAIR_STATUS_CHOICES = [
@@ -152,7 +154,7 @@ class StoreMainWindow(QWidget):
     Dark-themed POS Window precisely matching media_1789838350422.png & media_1789838350452.png
     Fully synced with Django Web API (Sales POS & Repairs Management)
     """
-    def __init__(self, username, access_token, license_info, is_offline=False, api_base_url="http://localhost:8000/api", db_path="local_storage.db", parent=None):
+    def __init__(self, username, access_token, license_info, is_offline=False, api_base_url="http://localhost:8000/api", db_path="local_storage.db", refresh_token=None, parent=None):
         super().__init__(parent)
         self.username = username
         self.access_token = access_token
@@ -160,18 +162,25 @@ class StoreMainWindow(QWidget):
         self.is_offline = is_offline
         self.api_base_url = api_base_url
         self.db_path = db_path
+        self.refresh_token = refresh_token
 
         self.current_invoice_items = []
         self.available_stock = []
         self.completed_invoices = []
+        self.sync_worker = None
 
         self.init_db()
         self.init_ui()
         self.load_data()
 
-        # Initial background sync if online
-        if not self.is_offline and self.access_token:
-            self.sync_with_server(silent=True)
+        # 30-Second Auto-Reconnect & Heartbeat Timer
+        self.heartbeat_timer = QTimer(self)
+        self.heartbeat_timer.setInterval(30_000)
+        self.heartbeat_timer.timeout.connect(self.check_server_heartbeat)
+        self.heartbeat_timer.start()
+
+        # Initial background sync / reachability check
+        QTimer.singleShot(1000, lambda: self.start_async_sync(silent=True))
 
     def init_db(self):
         conn = sqlite3.connect(self.db_path)
@@ -356,20 +365,83 @@ class StoreMainWindow(QWidget):
         main_layout.setContentsMargins(15, 10, 15, 15)
         main_layout.setSpacing(10)
 
-        # Top status line: License left, Hardware right
+        # Top status bar: License left, Sync & Connectivity center, Hardware right
         top_bar = QHBoxLayout()
+        top_bar.setSpacing(12)
+
         exp_date = self.license_info.get("expires_at", "2027-09-18")
         lic_label = QLabel(f"License: Active until {exp_date}")
-        lic_label.setStyleSheet("color: #cccccc; font-size: 12px;")
+        lic_label.setStyleSheet("color: #a1a1aa; font-size: 11px; font-weight: bold;")
         top_bar.addWidget(lic_label)
 
         top_bar.addStretch()
+
+        # Live Connection Badge
+        self.top_conn_badge = QLabel("Checking..." if not self.is_offline else "🟠 Offline (Local)")
+        self.top_conn_badge.setStyleSheet(
+            "background-color: #27272a; color: #facc15; font-size: 11px; font-weight: bold; "
+            "padding: 3px 10px; border-radius: 12px; border: 1px solid #3f3f46;"
+        )
+        top_bar.addWidget(self.top_conn_badge)
+
+        # Pending Queue Badge
+        self.top_pending_badge = QLabel("⏳ Pending: 0")
+        self.top_pending_badge.setStyleSheet(
+            "background-color: #1e293b; color: #38bdf8; font-size: 11px; font-weight: bold; "
+            "padding: 3px 10px; border-radius: 12px; border: 1px solid #334155;"
+        )
+        top_bar.addWidget(self.top_pending_badge)
+
+        # Quick Manual Sync Button
+        self.top_sync_btn = QPushButton("🔄 Sync Now")
+        self.top_sync_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #0284c7;
+                color: #ffffff;
+                font-size: 11px;
+                font-weight: bold;
+                padding: 3px 12px;
+                border-radius: 4px;
+                border: none;
+            }
+            QPushButton:hover {
+                background-color: #0369a1;
+            }
+            QPushButton:disabled {
+                background-color: #3f3f46;
+                color: #71717a;
+            }
+        """)
+        self.top_sync_btn.clicked.connect(lambda: self.start_async_sync(silent=False))
+        top_bar.addWidget(self.top_sync_btn)
+
+        # Quick Reconnect Button (shown when offline)
+        self.top_reconnect_btn = QPushButton("⚡ Reconnect")
+        self.top_reconnect_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #16a34a;
+                color: #ffffff;
+                font-size: 11px;
+                font-weight: bold;
+                padding: 3px 10px;
+                border-radius: 4px;
+                border: none;
+            }
+            QPushButton:hover {
+                background-color: #15803d;
+            }
+        """)
+        self.top_reconnect_btn.clicked.connect(lambda: self.start_async_sync(silent=False))
+        self.top_reconnect_btn.setVisible(self.is_offline)
+        top_bar.addWidget(self.top_reconnect_btn)
+
+        top_bar.addSpacing(10)
 
         hw_hash = self.license_info.get("hardware_id", "effb942a4261")
         if len(hw_hash) > 16:
             hw_hash = hw_hash[:16] + "..."
         hw_label = QLabel(f"Hardware: {hw_hash}")
-        hw_label.setStyleSheet("color: #888888; font-size: 12px;")
+        hw_label.setStyleSheet("color: #71717a; font-size: 11px;")
         top_bar.addWidget(hw_label)
 
         main_layout.addLayout(top_bar)
@@ -667,7 +739,7 @@ class StoreMainWindow(QWidget):
         table_top_bar.addStretch()
 
         rep_refresh_btn = QPushButton("تحديث من السيرفر (Refresh Repairs)")
-        rep_refresh_btn.clicked.connect(lambda: self.sync_with_server(silent=False))
+        rep_refresh_btn.clicked.connect(lambda: self.start_async_sync(silent=False))
         table_top_bar.addWidget(rep_refresh_btn)
         layout.addLayout(table_top_bar)
 
@@ -747,7 +819,7 @@ class StoreMainWindow(QWidget):
                 background-color: #106ebe;
             }
         """)
-        sync_btn.clicked.connect(lambda: self.sync_with_server(silent=False))
+        sync_btn.clicked.connect(lambda: self.start_async_sync(silent=False))
         info_lay.addWidget(sync_btn)
 
         info_box.setLayout(info_lay)
@@ -936,35 +1008,8 @@ class StoreMainWindow(QWidget):
         conn.commit()
         conn.close()
 
-        # 2. Real-time online synchronization with web server
-        is_synced = False
-        if not self.is_offline and self.access_token:
-            headers = {"Authorization": f"Bearer {self.access_token}"}
-            all_synced = True
-            for item in self.current_invoice_items:
-                sale_payload = {
-                    "invoice_id": receipt_no.lower(),
-                    "item_description": item["description"],
-                    "item": item.get("server_item_id"),
-                    "customer_name": "Walk-in Customer",
-                    "quantity": item["qty"],
-                    "cost_price": str(item["cost_unit"]),
-                    "sale_price": str(item["sale_unit"]),
-                }
-                try:
-                    resp = requests.post(f"{self.api_base_url}/sales/", json=sale_payload, headers=headers, timeout=4)
-                    if resp.status_code not in (200, 201):
-                        all_synced = False
-                except Exception as e:
-                    all_synced = False
-
-            if all_synced:
-                is_synced = True
-                conn = sqlite3.connect(self.db_path)
-                conn.execute("UPDATE invoices SET is_synced = 1 WHERE id = ?", (receipt_no.lower(),))
-                conn.commit()
-                conn.close()
-                self.log_sync(f"✅ Invoice #{receipt_no} synced instantly to web server.")
+        # 2. Trigger non-blocking background sync with web server
+        self.start_async_sync(silent=True)
 
         # Show receipt popup dialog
         receipt_dialog = ReceiptDialog(receipt_no, self.current_invoice_items, total_paid, date_str, self)
@@ -1037,29 +1082,8 @@ class StoreMainWindow(QWidget):
         conn.commit()
         conn.close()
 
-        # 2. Real-time online sync with Web Server
-        if not self.is_offline and self.access_token:
-            headers = {"Authorization": f"Bearer {self.access_token}"}
-            payload = {
-                "customer_name": cust,
-                "device_info": dev,
-                "issue_description": issue,
-                "repair_cost": str(cost),
-                "customer_payment": str(pay),
-                "deposit": str(deposit),
-                "status": status_code,
-            }
-            try:
-                resp = requests.post(f"{self.api_base_url}/repairs/", json=payload, headers=headers, timeout=4)
-                if resp.status_code in (200, 201):
-                    server_id = resp.json().get("id")
-                    conn = sqlite3.connect(self.db_path)
-                    conn.execute("UPDATE repairs SET is_synced = 1, server_id = ? WHERE id = ?", (server_id, local_id))
-                    conn.commit()
-                    conn.close()
-                    self.log_sync(f"✅ Repair ticket #{local_id} synced to web server (Remote ID #{server_id}).")
-            except Exception as e:
-                self.log_sync(f"⚠️ Offline/Failed to sync repair ticket #{local_id} immediately: {e}")
+        # 2. Trigger non-blocking background sync with web server
+        self.start_async_sync(silent=True)
 
         # Clear inputs
         self.rep_cust_in.clear()
@@ -1083,23 +1107,8 @@ class StoreMainWindow(QWidget):
         cur.execute("UPDATE repairs SET status = ?, is_synced = 0 WHERE id = ?", (new_status_code, repair_id))
         conn.commit()
 
-        if not self.is_offline and self.access_token and server_id:
-            headers = {"Authorization": f"Bearer {self.access_token}"}
-            try:
-                resp = requests.patch(
-                    f"{self.api_base_url}/repairs/{server_id}/",
-                    json={"status": new_status_code},
-                    headers=headers,
-                    timeout=4
-                )
-                if resp.status_code in (200, 201):
-                    cur.execute("UPDATE repairs SET is_synced = 1 WHERE id = ?", (repair_id,))
-                    conn.commit()
-                    self.log_sync(f"🔄 Updated repair #{repair_id} status on web server to '{new_status_code}'.")
-            except Exception as e:
-                self.log_sync(f"⚠️ Could not patch repair #{repair_id} status online: {e}")
-
         conn.close()
+        self.start_async_sync(silent=True)
         self.load_repairs_data()
 
     # -------------------------------------------------------------
@@ -1143,7 +1152,7 @@ class StoreMainWindow(QWidget):
 
             self.recent_table.setItem(row, 6, QTableWidgetItem(str(r[6])))
 
-        # 3. Load unsynced counts
+        # 3. Load unsynced counts and update badges
         cur.execute("SELECT COUNT(*) FROM invoices WHERE is_synced = 0")
         unsynced_inv = cur.fetchone()[0]
         self.unsynced_label.setText(f"Pending Unsynced Invoices: {unsynced_inv}")
@@ -1151,6 +1160,21 @@ class StoreMainWindow(QWidget):
         cur.execute("SELECT COUNT(*) FROM repairs WHERE is_synced = 0")
         unsynced_rep = cur.fetchone()[0]
         self.unsynced_repairs_label.setText(f"Pending Unsynced Repairs: {unsynced_rep}")
+
+        total_pending = unsynced_inv + unsynced_rep
+        if hasattr(self, "top_pending_badge"):
+            if total_pending == 0:
+                self.top_pending_badge.setText("✅ All Synced")
+                self.top_pending_badge.setStyleSheet(
+                    "background-color: #064e3b; color: #34d399; font-size: 11px; font-weight: bold; "
+                    "padding: 3px 10px; border-radius: 12px; border: 1px solid #059669;"
+                )
+            else:
+                self.top_pending_badge.setText(f"⏳ {total_pending} Pending Sync")
+                self.top_pending_badge.setStyleSheet(
+                    "background-color: #451a03; color: #fbbf24; font-size: 11px; font-weight: bold; "
+                    "padding: 3px 10px; border-radius: 12px; border: 1px solid #d97706;"
+                )
 
         conn.close()
         self.load_repairs_data()
@@ -1238,190 +1262,114 @@ class StoreMainWindow(QWidget):
     # -------------------------------------------------------------
     # FULL TWO-WAY SYNCHRONIZATION
     # -------------------------------------------------------------
+    # ASYNCHRONOUS TWO-WAY SYNCHRONIZATION
+    # -------------------------------------------------------------
     def log_sync(self, message):
         time_str = datetime.now().strftime("%H:%M:%S")
         if hasattr(self, "sync_log_text"):
             self.sync_log_text.appendPlainText(f"[{time_str}] {message}")
 
-    def sync_with_server(self, silent=False):
-        if self.is_offline or not self.access_token:
+    def check_server_heartbeat(self):
+        """Periodic background heartbeat check every 30 seconds."""
+        if self.sync_worker and self.sync_worker.isRunning():
+            return
+        self.start_async_sync(silent=True)
+
+    def start_async_sync(self, silent=False):
+        """Spawns non-blocking QThread background worker for 2-way sync."""
+        if self.sync_worker and self.sync_worker.isRunning():
             if not silent:
-                QMessageBox.warning(self, "Sync", "Cannot sync while in Offline Mode. Please connect to server.")
+                QMessageBox.information(self, "Sync", "مزامنة البيانات جارية بالفعل في الخلفية...")
             return
 
-        headers = {"Authorization": f"Bearer {self.access_token}"}
-        pushed_sales = 0
-        pushed_repairs = 0
-        pulled_repairs = 0
-        pulled_items = 0
+        # Set UI to syncing state
+        if hasattr(self, "top_conn_badge"):
+            self.top_conn_badge.setText("🔄 Syncing...")
+            self.top_conn_badge.setStyleSheet(
+                "background-color: #1e3a8a; color: #60a5fa; font-size: 11px; font-weight: bold; "
+                "padding: 3px 10px; border-radius: 12px; border: 1px solid #2563eb;"
+            )
+        if hasattr(self, "top_sync_btn"):
+            self.top_sync_btn.setEnabled(False)
 
-        self.log_sync("Starting comprehensive two-way sync with server...")
+        self.sync_worker = SyncWorker(
+            api_base_url=self.api_base_url,
+            access_token=self.access_token,
+            db_path=self.db_path,
+            refresh_token=self.refresh_token
+        )
 
-        conn = sqlite3.connect(self.db_path)
-        cur = conn.cursor()
+        self.sync_worker.log_signal.connect(self.log_sync)
+        self.sync_worker.status_signal.connect(self.on_sync_status)
+        self.sync_worker.connection_status_signal.connect(self.on_connection_status)
+        self.sync_worker.finished_signal.connect(lambda stats: self.on_sync_finished(stats, silent))
+        self.sync_worker.start()
 
-        # 1. Push unsynced invoices
-        cur.execute("SELECT id, items_json FROM invoices WHERE is_synced = 0")
-        unsynced_invoices = cur.fetchall()
-        for inv_id, items_json_str in unsynced_invoices:
-            if items_json_str:
-                try:
-                    items = json.loads(items_json_str)
-                    all_ok = True
-                    for itm in items:
-                        resp = requests.post(
-                            f"{self.api_base_url}/sales/",
-                            json={
-                                "invoice_id": inv_id,
-                                "item_description": itm["description"],
-                                "item": itm.get("server_item_id"),
-                                "customer_name": "Walk-in Customer",
-                                "quantity": itm["qty"],
-                                "cost_price": str(itm["cost_unit"]),
-                                "sale_price": str(itm["sale_unit"]),
-                            },
-                            headers=headers,
-                            timeout=5
-                        )
-                        if resp.status_code not in (200, 201):
-                            all_ok = False
-                    if all_ok:
-                        cur.execute("UPDATE invoices SET is_synced = 1 WHERE id = ?", (inv_id,))
-                        pushed_sales += 1
-                except Exception as e:
-                    self.log_sync(f"Failed pushing invoice #{inv_id}: {e}")
+    def on_sync_status(self, status_text):
+        if hasattr(self, "top_conn_badge"):
+            self.top_conn_badge.setText(f"🔄 {status_text[:20]}...")
+
+    def on_connection_status(self, is_online):
+        self.is_offline = not is_online
+        mode_str = "Offline Mode (Local)" if self.is_offline else "Online Mode (Connected)"
+        self.setWindowTitle(f"Mobile Store POS & Repairs - {mode_str}")
+
+        if hasattr(self, "top_conn_badge"):
+            if is_online:
+                self.top_conn_badge.setText("🟢 Online (Connected)")
+                self.top_conn_badge.setStyleSheet(
+                    "background-color: #064e3b; color: #34d399; font-size: 11px; font-weight: bold; "
+                    "padding: 3px 10px; border-radius: 12px; border: 1px solid #059669;"
+                )
             else:
-                cur.execute("UPDATE invoices SET is_synced = 1 WHERE id = ?", (inv_id,))
+                self.top_conn_badge.setText("🟠 Offline (Local Mode)")
+                self.top_conn_badge.setStyleSheet(
+                    "background-color: #451a03; color: #fbbf24; font-size: 11px; font-weight: bold; "
+                    "padding: 3px 10px; border-radius: 12px; border: 1px solid #d97706;"
+                )
 
-        # 2. Push unsynced repairs
-        cur.execute("""
-            SELECT id, customer_name, device_info, issue, cost, payment, deposit, status, server_id
-            FROM repairs
-            WHERE is_synced = 0
-        """)
-        unsynced_repairs = cur.fetchall()
-        for rep in unsynced_repairs:
-            r_id, cust, dev, issue, cost, pay, dep, st_raw, srv_id = rep
-            st = STATUS_MAP_LEGACY.get(str(st_raw).lower(), str(st_raw).lower())
-            try:
-                if srv_id:
-                    # Exists remotely, patch
-                    patch_res = requests.patch(
-                        f"{self.api_base_url}/repairs/{srv_id}/",
-                        json={
-                            "status": st,
-                            "repair_cost": str(cost),
-                            "customer_payment": str(pay),
-                            "deposit": str(dep or 0),
-                        },
-                        headers=headers,
-                        timeout=5
-                    )
-                    if patch_res.status_code in (200, 201):
-                        cur.execute("UPDATE repairs SET is_synced = 1 WHERE id = ?", (r_id,))
-                        pushed_repairs += 1
-                else:
-                    # Create remotely
-                    post_res = requests.post(
-                        f"{self.api_base_url}/repairs/",
-                        json={
-                            "customer_name": cust,
-                            "device_info": dev,
-                            "issue_description": issue,
-                            "repair_cost": str(cost),
-                            "customer_payment": str(pay),
-                            "deposit": str(dep or 0),
-                            "status": st,
-                        },
-                        headers=headers,
-                        timeout=5
-                    )
-                    if post_res.status_code in (200, 201):
-                        new_srv_id = post_res.json().get("id")
-                        cur.execute("UPDATE repairs SET is_synced = 1, server_id = ? WHERE id = ?", (new_srv_id, r_id))
-                        pushed_repairs += 1
-            except Exception as e:
-                self.log_sync(f"Failed pushing repair #{r_id}: {e}")
+        if hasattr(self, "top_reconnect_btn"):
+            self.top_reconnect_btn.setVisible(not is_online)
 
-        # 3. Pull remote repairs from server
-        try:
-            get_rep = requests.get(f"{self.api_base_url}/repairs/", headers=headers, timeout=5)
-            if get_rep.status_code == 200:
-                remote_repairs = get_rep.json()
-                for r in remote_repairs:
-                    r_id = r["id"]
-                    cust = r.get("customer_name") or "Customer"
-                    dev = r.get("device_info") or ""
-                    issue = r.get("issue_description") or ""
-                    cost = float(r.get("repair_cost") or 0)
-                    pay = float(r.get("customer_payment") or 0)
-                    dep = float(r.get("deposit") or 0)
-                    profit = float(r.get("profit") or (pay - cost))
-                    st = r.get("status") or "diagnosing"
-                    date_str = r.get("created_at", "")[:16].replace("T", " ")
+        if hasattr(self, "sync_status_label"):
+            if is_online:
+                self.sync_status_label.setText("Connection Status: ONLINE (Connected to Server)")
+                self.sync_status_label.setStyleSheet("font-weight: bold; color: #22c55e;")
+            else:
+                self.sync_status_label.setText("Connection Status: OFFLINE (Grace Period / Local Cache Active)")
+                self.sync_status_label.setStyleSheet("font-weight: bold; color: #f59e0b;")
 
-                    cur.execute("SELECT id FROM repairs WHERE server_id = ?", (r_id,))
-                    existing = cur.fetchone()
-                    if existing:
-                        cur.execute("""
-                            UPDATE repairs
-                            SET customer_name = ?, device_info = ?, issue = ?, cost = ?, payment = ?, deposit = ?, profit = ?, status = ?, is_synced = 1
-                            WHERE id = ?
-                        """, (cust, dev, issue, cost, pay, dep, profit, st, existing[0]))
-                    else:
-                        cur.execute("""
-                            INSERT INTO repairs (customer_name, device_info, issue, cost, payment, deposit, profit, status, date, server_id, is_synced)
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
-                        """, (cust, dev, issue, cost, pay, dep, profit, st, date_str, r_id))
-                        pulled_repairs += 1
-        except Exception as e:
-            self.log_sync(f"Failed pulling remote repairs: {e}")
+    def on_sync_finished(self, stats, silent):
+        if hasattr(self, "top_sync_btn"):
+            self.top_sync_btn.setEnabled(True)
 
-        # 4. Pull remote inventory items from server
-        try:
-            get_inv = requests.get(f"{self.api_base_url}/inventory/", headers=headers, timeout=5)
-            if get_inv.status_code == 200:
-                remote_inv = get_inv.json()
-                for item in remote_inv:
-                    srv_item_id = item["id"]
-                    desc = f"{item['brand']} {item['model']} - {item['name']}".strip()
-                    cost = float(item.get("purchase_price") or 0)
-                    sale = float(item.get("sale_price") or 0)
-                    stock = 1 if item.get("status") != "sold" else 0
+        if stats.get("new_access_token"):
+            self.access_token = stats["new_access_token"]
 
-                    cur.execute("SELECT id FROM stock_items WHERE server_id = ?", (srv_item_id,))
-                    existing_stock = cur.fetchone()
-                    if existing_stock:
-                        cur.execute("""
-                            UPDATE stock_items SET description = ?, stock = ?, cost = ?, sale_price = ? WHERE id = ?
-                        """, (desc, stock, cost, sale, existing_stock[0]))
-                    else:
-                        cur.execute("SELECT id FROM stock_items WHERE description = ?", (desc,))
-                        by_desc = cur.fetchone()
-                        if by_desc:
-                            cur.execute("UPDATE stock_items SET server_id = ?, cost = ?, sale_price = ? WHERE id = ?", (srv_item_id, cost, sale, by_desc[0]))
-                        else:
-                            cur.execute("""
-                                INSERT INTO stock_items (description, stock, cost, sale_price, server_id)
-                                VALUES (?, ?, ?, ?, ?)
-                            """, (desc, stock, cost, sale, srv_item_id))
-                            pulled_items += 1
-        except Exception as e:
-            self.log_sync(f"Failed pulling inventory: {e}")
+        # Refresh connection badge state
+        is_online = not stats.get("offline", False)
+        self.on_connection_status(is_online)
 
-        conn.commit()
-        conn.close()
-
-        self.log_sync(f"Sync finished: ↑ {pushed_sales} sales, ↑ {pushed_repairs} repairs, ↓ {pulled_repairs} repairs, ↓ {pulled_items} stock items.")
-
+        # Reload tables and pending badge from SQLite
         self.load_data()
 
+        # Notify user if manual click
         if not silent:
-            msg = (
-                f"Synchronization Complete!\n\n"
-                f"• Pushed Invoices to Server: {pushed_sales}\n"
-                f"• Pushed Repairs to Server: {pushed_repairs}\n"
-                f"• Pulled Repairs from Server: {pulled_repairs}\n"
-                f"• Pulled Inventory Items: {pulled_items}"
-            )
-            QMessageBox.information(self, "Sync Successful", msg)
+            if stats.get("success"):
+                msg = (
+                    f"تمت المزامنة بنجاح مع السيرفر!\n\n"
+                    f"• فواتير مبيعات تم رفعها: {stats['pushed_sales']}\n"
+                    f"• تذاكر صيانة تم رفعها: {stats['pushed_repairs']}\n"
+                    f"• تذاكر صيانة تم سحبها: {stats['pulled_repairs']}\n"
+                    f"• منتجات تم تحديثها من المخزن: {stats['pulled_items']}"
+                )
+                QMessageBox.information(self, "اكتملت المزامنة", msg)
+            elif stats.get("offline"):
+                QMessageBox.warning(
+                    self,
+                    "وضع عدم الاتصال",
+                    "السيرفر غير متاح حالياً. تم حفظ كافة العمليات في قاعدة البيانات المحلية وسيتم مزامنتها تلقائياً عند عودة الاتصال."
+                )
+            else:
+                err_msg = stats.get("error", "Unknown synchronization error")
+                QMessageBox.warning(self, "خطأ في المزامنة", f"حدث خطأ أثناء المزامنة:\n{err_msg}")

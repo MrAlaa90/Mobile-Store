@@ -51,12 +51,34 @@ class InventoryViewSet(ModelViewSet):
         serializer.save(user=self.request.user)
 
 
+class HealthCheckView(APIView):
+    """Lightweight endpoint to ping server availability without requiring authentication."""
+    permission_classes = []
+
+    def get(self, request):
+        return Response({
+            'status': 'ok',
+            'server_time': timezone.now().isoformat(),
+            'service': 'Mobile-Store API',
+            'version': '1.0.0'
+        })
+
+
 class SaleViewSet(ModelViewSet):
     serializer_class = SaleSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
         return Sale.objects.filter(user=self.request.user).order_by('-date')
+
+    def create(self, request, *args, **kwargs):
+        invoice_id = request.data.get('invoice_id')
+        if invoice_id:
+            existing = Sale.objects.filter(user=request.user, invoice_id=invoice_id).first()
+            if existing:
+                serializer = self.get_serializer(existing)
+                return Response(serializer.data, status=status.HTTP_200_OK)
+        return super().create(request, *args, **kwargs)
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)

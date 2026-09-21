@@ -220,7 +220,9 @@ class MobileStoreApp(QWidget):
             access_token = data.get("access")
             refresh_token = data.get("refresh")
             self.save_session("access_token", access_token)
+            self.save_session("refresh_token", refresh_token)
             self.save_session("username", username)
+            self.save_session("password", password)
 
             # 2. Online License Check
             headers = {"Authorization": f"Bearer {access_token}"}
@@ -264,7 +266,8 @@ class MobileStoreApp(QWidget):
                         },
                         is_offline=False,
                         api_base_url=API_BASE_URL,
-                        db_path=DB_FILE
+                        db_path=DB_FILE,
+                        refresh_token=refresh_token
                     )
                     self.main_window.show()
                     self.main_window.raise_()
@@ -290,7 +293,7 @@ class MobileStoreApp(QWidget):
                 )
                 self.main_window = StoreMainWindow(
                     username=username,
-                    access_token=None,
+                    access_token=self.get_session("access_token"),
                     license_info={
                         "license_key": payload.get("license_key", "Offline License"),
                         "expires_at": payload.get("expires_at", "2027-09-18"),
@@ -298,7 +301,8 @@ class MobileStoreApp(QWidget):
                     },
                     is_offline=True,
                     api_base_url=API_BASE_URL,
-                    db_path=DB_FILE
+                    db_path=DB_FILE,
+                    refresh_token=self.get_session("refresh_token")
                 )
                 self.main_window.show()
                 self.main_window.raise_()
