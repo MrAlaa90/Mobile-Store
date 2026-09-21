@@ -1,0 +1,54 @@
+# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnpm-store/
+
+# Python & Virtual Environments
+venv/
+.venv/
+env/
+ENV/
+desktop/venv/
+backend/venv/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Build & Output
+dist/
+build/
+*.egg-info/
+frontend/dist/
+
+# SQLite & Local Databases
+*.sqlite3
+*.db
+desktop/local_storage.db
+
+# Environment Variables & Secrets
+.env
+.env.local
+.env.*.local
+backend/keys/private_key.pem
+
+# IDE & OS Files
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Flutter / Dart
+.dart_tool/
+.packages
+.pub-cache/
+.pub/
+
+# Logs
+*.log
