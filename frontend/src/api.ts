@@ -1,13 +1,15 @@
 import axios from 'axios';
 
 export const getDefaultBaseUrl = (): string => {
-  if (import.meta.env.VITE_API_URL) {
-    return import.meta.env.VITE_API_URL;
-  }
+  const envUrl = import.meta.env.VITE_API_URL;
   if (typeof window !== 'undefined' && window.location.hostname) {
-    return `http://${window.location.hostname}:8000/api`;
+    if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+      if (!envUrl || envUrl.includes('localhost') || envUrl.includes('127.0.0.1')) {
+        return `http://${window.location.hostname}:8000/api`;
+      }
+    }
   }
-  return 'http://localhost:8000/api';
+  return envUrl || 'http://localhost:8000/api';
 };
 
 const api = axios.create({
