@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../models/sale_model.dart';
 import '../providers/sales_provider.dart';
 
 class SalesScreen extends StatefulWidget {
@@ -149,7 +148,7 @@ class _SalesScreenState extends State<SalesScreen> {
               ),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(color: const Color(0xFF059669)),
-            ],
+            ),
             child: Row(
               children: [
                 Expanded(
