@@ -25,11 +25,11 @@ const Navbar: React.FC<NavbarProps> = ({ username, onLogout }) => {
   }, [showDownloads]);
 
   const navLinks = [
-    { path: '/', label: 'Dashboard', arLabel: 'لوحة التحكم', icon: '📊' },
-    { path: '/inventory', label: 'Inventory', arLabel: 'المخزون', icon: '📦' },
-    { path: '/sales', label: 'Sales & POS', arLabel: 'المبيعات والفواتير', icon: '💰' },
-    { path: '/repairs', label: 'Repairs', arLabel: 'قسم الصيانة', icon: '🛠️' },
-    { path: '/customers', label: 'Customers', arLabel: 'العملاء', icon: '👥' },
+    { path: '/', label: 'Dashboard', arLabel: 'لوحة التحكم', shortLabel: 'الرئيسية', icon: '📊' },
+    { path: '/inventory', label: 'Inventory', arLabel: 'المخزون', shortLabel: 'المخزون', icon: '📦' },
+    { path: '/sales', label: 'Sales & POS', arLabel: 'المبيعات والفواتير', shortLabel: 'المبيعات', icon: '💰' },
+    { path: '/repairs', label: 'Repairs', arLabel: 'قسم الصيانة', shortLabel: 'الصيانة', icon: '🛠️' },
+    { path: '/customers', label: 'Customers', arLabel: 'العملاء', shortLabel: 'العملاء', icon: '👥' },
   ];
 
   return (
@@ -126,12 +126,12 @@ const Navbar: React.FC<NavbarProps> = ({ username, onLogout }) => {
               <div className="mobile-user-avatar">
                 {(username || 'U')[0].toUpperCase()}
               </div>
-              <div className="mobile-user-text">
+              <div className="mobile-user-text" dir="rtl">
                 <span className="mobile-user-label">المستخدم: </span>
-                <strong className="mobile-user-name">{username || 'Store Admin'}</strong>
+                <bdi className="mobile-user-name">{username || 'admin'}</bdi>
               </div>
             </div>
-            <span className="mobile-user-status">
+            <span className="mobile-user-status" dir="rtl">
               <span className="status-dot"></span>
               متصل
             </span>
@@ -164,24 +164,24 @@ const Navbar: React.FC<NavbarProps> = ({ username, onLogout }) => {
           </div>
         </div>
       </div>
-
-      {/* Mobile Bottom App Navigation Bar */}
-      <nav className="mobile-bottom-nav">
-        {navLinks.map((link) => {
-          const isActive = location.pathname === link.path;
-          return (
-            <Link
-              key={link.path}
-              to={link.path}
-              className={`mobile-bottom-link ${isActive ? 'active' : ''}`}
-            >
-              <span className="mobile-bottom-icon">{link.icon}</span>
-              <span>{link.arLabel}</span>
-            </Link>
-          );
-        })}
-      </nav>
     </header>
+
+    {/* Mobile Bottom App Navigation Bar */}
+    <nav className="mobile-bottom-nav">
+      {navLinks.map((link) => {
+        const isActive = location.pathname === link.path;
+        return (
+          <Link
+            key={link.path}
+            to={link.path}
+            className={`mobile-bottom-link ${isActive ? 'active' : ''}`}
+          >
+            <span className="mobile-bottom-icon">{link.icon}</span>
+            <span>{link.shortLabel || link.arLabel}</span>
+          </Link>
+        );
+      })}
+    </nav>
 
     {/* Downloads Modal Dialog (Portaled to document.body outside header containing block) */}
     {showDownloads && createPortal(

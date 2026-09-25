@@ -821,7 +821,7 @@ h1, h2, h3, h4, h5, h6 {
   /* Mobile Actions Grid: 3 solid buttons perfectly spaced */
   .mobile-actions-grid {
     display: grid;
-    grid-template-columns: 1.4fr 1fr 1fr;
+    grid-template-columns: 1.3fr 1fr 1fr;
     gap: 6px;
     width: 100%;
   }
@@ -829,7 +829,7 @@ h1, h2, h3, h4, h5, h6 {
   .mobile-actions-grid button {
     height: 38px;
     border-radius: 8px;
-    font-size: 0.76rem;
+    font-size: 0.75rem;
     font-weight: 700;
     display: flex;
     align-items: center;
@@ -838,6 +838,9 @@ h1, h2, h3, h4, h5, h6 {
     cursor: pointer;
     white-space: nowrap;
     transition: all var(--transition-fast);
+    padding: 0 4px;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .mobile-btn-download {
@@ -864,7 +867,7 @@ h1, h2, h3, h4, h5, h6 {
     bottom: 0;
     left: 0;
     right: 0;
-    height: 66px;
+    height: 64px;
     background: var(--bg-glass);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
@@ -872,7 +875,7 @@ h1, h2, h3, h4, h5, h6 {
     z-index: 999;
     align-items: center;
     justify-content: space-around;
-    padding: 4px 6px;
+    padding: 4px;
     box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.25);
   }
 
@@ -882,20 +885,22 @@ h1, h2, h3, h4, h5, h6 {
     align-items: center;
     justify-content: center;
     gap: 3px;
-    padding: 6px 10px;
-    border-radius: 12px;
+    padding: 6px 2px;
+    border-radius: 10px;
     text-decoration: none;
     color: var(--text-muted);
-    font-size: 0.72rem;
+    font-size: 0.7rem;
     font-weight: 600;
     transition: all var(--transition-fast);
     flex: 1;
     text-align: center;
+    min-width: 0;
   }
 
   .mobile-bottom-link.active {
     color: var(--primary-light);
-    background: var(--primary-glow);
+    background: rgba(2, 132, 199, 0.15);
+    font-weight: 700;
   }
 
   .mobile-bottom-icon {
