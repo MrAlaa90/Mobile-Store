@@ -425,33 +425,6 @@ class StoreMainWindow(QWidget):
         if "server_id" not in stock_cols:
             cur.execute("ALTER TABLE stock_items ADD COLUMN server_id INTEGER")
 
-        # Insert sample stock if empty
-        cur.execute("SELECT COUNT(*) FROM stock_items")
-        if cur.fetchone()[0] == 0:
-            cur.executemany("""
-                INSERT INTO stock_items (description, stock, cost, sale_price) VALUES (?, ?, ?, ?)
-            """, [
-                ("oppo (oppo reno 14)", 3, 28500.0, 27000.0),
-                ("phone", 5, 7000.0, 8500.0),
-                ("oppo", 2, 24000.0, 28000.0),
-                ("oppo reno 6 5g", 1, 5600.0, 7000.0),
-                ("iPhone 15 Pro Max", 2, 55000.0, 62000.0),
-                ("Samsung Galaxy S24 Ultra", 3, 48000.0, 54000.0),
-            ])
-
-        # Insert recent completed invoices if empty
-        cur.execute("SELECT COUNT(*) FROM invoices")
-        if cur.fetchone()[0] == 0:
-            cur.executemany("""
-                INSERT INTO invoices (id, summary, items_qty, total_amount, net_profit, date, is_synced)
-                VALUES (?, ?, ?, ?, ?, ?, 1)
-            """, [
-                ("aefffeb1", "oppo (oppo reno 14) (+1 items)", 3, 45500.0, 45500.0, "2026-09-18 22:50",),
-                ("b50b5550", "phone", 2, 17000.0, 17000.0, "2026-09-18 22:57",),
-                ("8c59b9b8", "oppo", 1, 28000.0, 28000.0, "2026-09-18 23:01",),
-                ("824bca0c", "oppo reno 6 5g", 1, 7000.0, 1400.0, "2026-09-18 23:15",),
-            ])
-
         conn.commit()
         conn.close()
 

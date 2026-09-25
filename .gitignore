@@ -28,8 +28,8 @@ frontend/dist/
 
 # SQLite & Local Databases
 *.sqlite3
-*.db
-desktop/local_storage.db
+*.db*
+desktop/local_storage.db*
 
 # Environment Variables & Secrets
 .env

@@ -272,8 +272,10 @@ class SyncWorker(QThread):
                 get_inv = requests.get(f"{self.api_base_url}/inventory/", headers=headers, timeout=6)
                 if get_inv.status_code == 200:
                     remote_inv = get_inv.json()
+                    active_server_ids = set()
                     for item in remote_inv:
                         srv_item_id = item["id"]
+                        active_server_ids.add(srv_item_id)
                         desc = f"{item['brand']} {item['model']} - {item['name']}".strip()
                         cost = float(item.get("purchase_price") or 0)
                         sale = float(item.get("sale_price") or 0)
@@ -294,11 +296,44 @@ class SyncWorker(QThread):
                                 cur.execute("""
                                     INSERT INTO stock_items (description, stock, cost, sale_price, server_id)
                                     VALUES (?, ?, ?, ?, ?)
-                                """, (desc, stock, cost, sale, srv_item_id))
+                                    """, (desc, stock, cost, sale, srv_item_id))
                                 stats["pulled_items"] += 1
+
+                    # Remove any items deleted from cloud for this tenant
+                    cur.execute("SELECT id, server_id FROM stock_items WHERE server_id IS NOT NULL")
+                    for loc_id, s_id in cur.fetchall():
+                        if s_id not in active_server_ids:
+                            cur.execute("DELETE FROM stock_items WHERE id = ?", (loc_id,))
+
                     conn.commit()
             except Exception as e:
                 self.log(f"Failed pulling remote inventory: {e}")
+
+            # -------------------------------------------------------------
+            # 5. Pull Remote Sales / Invoices from Server
+            # -------------------------------------------------------------
+            self.status_signal.emit("Pulling sales invoices from server...")
+            try:
+                get_sales = requests.get(f"{self.api_base_url}/sales/", headers=headers, timeout=6)
+                if get_sales.status_code == 200:
+                    remote_sales = get_sales.json()
+                    for sale in remote_sales:
+                        s_id = str(sale.get("invoice_id") or f"sale-{sale.get('id')}")
+                        s_summary = sale.get("item_name") or "Sale Invoice"
+                        s_qty = int(sale.get("quantity") or 1)
+                        s_total = float(sale.get("total_price") or 0)
+                        s_profit = float(sale.get("profit") or 0)
+                        s_date = str(sale.get("date") or "")[:16].replace("T", " ")
+
+                        cur.execute("SELECT id FROM invoices WHERE id = ?", (s_id,))
+                        if not cur.fetchone():
+                            cur.execute("""
+                                INSERT INTO invoices (id, summary, items_qty, total_amount, net_profit, date, is_synced)
+                                VALUES (?, ?, ?, ?, ?, ?, 1)
+                            """, (s_id, s_summary, s_qty, s_total, s_profit, s_date))
+                    conn.commit()
+            except Exception as e:
+                self.log(f"Failed pulling remote sales: {e}")
 
             stats["success"] = True
             self.log(f"Sync complete: Pushed {stats['pushed_sales']} sales, {stats['pushed_repairs']} repairs; Pulled {stats['pulled_repairs']} repairs, {stats['pulled_items']} stock items.")

@@ -46,9 +46,20 @@ from updater import check_updates_async, CURRENT_APP_VERSION
 
 API_BASE_URL = os.environ.get("API_BASE_URL", "http://34.175.186.221/api")
 WEB_URL = os.environ.get("WEB_URL", "http://34.175.186.221/")
-DB_FILE = os.path.join(DATA_DIR, "local_storage.db")
+SESSION_DB_FILE = os.path.join(DATA_DIR, "session.db")
 PUBLIC_KEY_PATH = os.path.join(BUNDLE_DIR, "keys", "public_key.pem")
 LICENSE_FILE = os.path.join(DATA_DIR, "license.json")
+
+
+def get_user_db_path(username):
+    """
+    Ensures complete local database isolation between different store accounts on the same PC.
+    Store X cannot see Store Y's local transactions, stock, or invoices.
+    """
+    safe_name = "".join(c for c in (username or "default") if c.isalnum() or c in ("_", "-")).lower()
+    if not safe_name:
+        safe_name = "default"
+    return os.path.join(DATA_DIR, f"local_storage_{safe_name}.db")
 
 _cached_hwid = None
 
@@ -132,7 +143,7 @@ class MobileStoreApp(QWidget):
         self.init_ui()
 
     def init_db(self):
-        self.conn = sqlite3.connect(DB_FILE)
+        self.conn = sqlite3.connect(SESSION_DB_FILE)
         self.cursor = self.conn.cursor()
         self.cursor.execute(
             "CREATE TABLE IF NOT EXISTS session (key TEXT PRIMARY KEY, value TEXT)"
@@ -365,7 +376,7 @@ class MobileStoreApp(QWidget):
                         },
                         is_offline=False,
                         api_base_url=API_BASE_URL,
-                        db_path=DB_FILE,
+                        db_path=get_user_db_path(username),
                         refresh_token=refresh_token
                     )
                     self.main_window.show()
@@ -407,7 +418,7 @@ class MobileStoreApp(QWidget):
                     },
                     is_offline=True,
                     api_base_url=API_BASE_URL,
-                    db_path=DB_FILE,
+                    db_path=get_user_db_path(username),
                     refresh_token=self.get_session("refresh_token")
                 )
                 self.main_window.show()
