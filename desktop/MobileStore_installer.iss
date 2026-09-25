@@ -16,6 +16,7 @@ AppUpdatesURL={#MyAppURL}
 DefaultDirName={autopf}\MobileStore
 DisableProgramGroupPage=yes
 LicenseFile=
+SetupIconFile=d:\Projects\Mobile-Store\desktop\app_icon.ico
 OutputDir=d:\Projects\Mobile-Store\dist_installers
 OutputBaseFilename=MobileStore-Setup
 Compression=lzma2/ultra64

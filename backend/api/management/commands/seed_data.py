@@ -23,12 +23,12 @@ class Command(BaseCommand):
                 "is_superuser": True,
             }
         )
-        admin_user.set_password("admin123")
-        admin_user.save()
         if created:
+            admin_user.set_password("admin123")
+            admin_user.save()
             self.stdout.write(self.style.SUCCESS("Created admin user 'admin' (password: admin123)"))
         else:
-            self.stdout.write("Admin user 'admin' already exists (password refreshed to admin123).")
+            self.stdout.write("Admin user 'admin' already exists.")
 
         # 2. License
         lic, _ = License.objects.get_or_create(

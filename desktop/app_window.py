@@ -4,13 +4,16 @@ import sqlite3
 import uuid
 from datetime import datetime
 
+import urllib.parse
+import webbrowser
 import requests
 from PyQt6.QtCore import Qt, QKeyCombination, QTimer
-from PyQt6.QtGui import QKeySequence, QShortcut, QFont, QColor
+from PyQt6.QtGui import QKeySequence, QShortcut, QFont, QColor, QIcon
 from PyQt6.QtWidgets import (
     QCheckBox,
     QComboBox,
     QDialog,
+    QFileDialog,
     QFrame,
     QHBoxLayout,
     QHeaderView,
@@ -149,6 +152,190 @@ class ReceiptDialog(QDialog):
         self.setLayout(layout)
 
 
+DARK_THEME = """
+    QWidget {
+        background-color: #0f172a;
+        color: #f1f5f9;
+        font-family: 'Segoe UI', Tahoma, sans-serif;
+        font-size: 12px;
+    }
+    QTabWidget::pane {
+        border: 1px solid #1e293b;
+        background-color: #0f172a;
+        border-radius: 6px;
+    }
+    QTabBar::tab {
+        background: #1e293b;
+        color: #94a3b8;
+        padding: 8px 20px;
+        border: 1px solid #334155;
+        border-bottom: none;
+        margin-right: 3px;
+        border-top-left-radius: 6px;
+        border-top-right-radius: 6px;
+        font-weight: 600;
+    }
+    QTabBar::tab:selected {
+        background: #0284c7;
+        color: #ffffff;
+        font-weight: bold;
+        border-color: #0284c7;
+    }
+    QLineEdit, QComboBox {
+        background-color: #1e293b;
+        border: 1px solid #334155;
+        border-radius: 6px;
+        padding: 6px 10px;
+        color: #ffffff;
+    }
+    QLineEdit:focus, QComboBox:focus {
+        border: 1px solid #38bdf8;
+    }
+    QComboBox QAbstractItemView {
+        background-color: #1e293b;
+        color: #ffffff;
+        selection-background-color: #0284c7;
+    }
+    QTableWidget {
+        background-color: #0f172a;
+        alternate-background-color: #1e293b;
+        gridline-color: #1e293b;
+        border: 1px solid #334155;
+        color: #f8fafc;
+        selection-background-color: #0284c7;
+        selection-color: #ffffff;
+        border-radius: 6px;
+    }
+    QHeaderView::section {
+        background-color: #1e293b;
+        color: #94a3b8;
+        padding: 8px;
+        border: none;
+        border-bottom: 2px solid #334155;
+        font-weight: bold;
+    }
+    QPushButton {
+        background-color: #1e293b;
+        color: #f1f5f9;
+        border: 1px solid #334155;
+        border-radius: 6px;
+        padding: 6px 14px;
+        font-weight: 600;
+    }
+    QPushButton:hover {
+        background-color: #334155;
+        color: #ffffff;
+    }
+    QCheckBox {
+        color: #f1f5f9;
+        spacing: 6px;
+    }
+    QCheckBox::indicator {
+        width: 16px;
+        height: 16px;
+        border: 1px solid #475569;
+        background: #1e293b;
+        border-radius: 4px;
+    }
+    QCheckBox::indicator:checked {
+        background: #0284c7;
+        border-color: #0284c7;
+    }
+"""
+
+LIGHT_THEME = """
+    QWidget {
+        background-color: #f8fafc;
+        color: #0f172a;
+        font-family: 'Segoe UI', Tahoma, sans-serif;
+        font-size: 12px;
+    }
+    QTabWidget::pane {
+        border: 1px solid #cbd5e1;
+        background-color: #ffffff;
+        border-radius: 6px;
+    }
+    QTabBar::tab {
+        background: #e2e8f0;
+        color: #475569;
+        padding: 8px 20px;
+        border: 1px solid #cbd5e1;
+        border-bottom: none;
+        margin-right: 3px;
+        border-top-left-radius: 6px;
+        border-top-right-radius: 6px;
+        font-weight: 600;
+    }
+    QTabBar::tab:selected {
+        background: #0284c7;
+        color: #ffffff;
+        font-weight: bold;
+        border-color: #0284c7;
+    }
+    QLineEdit, QComboBox {
+        background-color: #ffffff;
+        border: 1px solid #cbd5e1;
+        border-radius: 6px;
+        padding: 6px 10px;
+        color: #0f172a;
+    }
+    QLineEdit:focus, QComboBox:focus {
+        border: 1px solid #0284c7;
+    }
+    QComboBox QAbstractItemView {
+        background-color: #ffffff;
+        color: #0f172a;
+        selection-background-color: #e0f2fe;
+        selection-color: #0284c7;
+    }
+    QTableWidget {
+        background-color: #ffffff;
+        alternate-background-color: #f8fafc;
+        gridline-color: #e2e8f0;
+        border: 1px solid #cbd5e1;
+        color: #0f172a;
+        selection-background-color: #0284c7;
+        selection-color: #ffffff;
+        border-radius: 6px;
+    }
+    QHeaderView::section {
+        background-color: #f1f5f9;
+        color: #475569;
+        padding: 8px;
+        border: none;
+        border-bottom: 2px solid #cbd5e1;
+        font-weight: bold;
+    }
+    QPushButton {
+        background-color: #f1f5f9;
+        color: #0f172a;
+        border: 1px solid #cbd5e1;
+        border-radius: 6px;
+        padding: 6px 14px;
+        font-weight: 600;
+    }
+    QPushButton:hover {
+        background-color: #e2e8f0;
+        color: #0284c7;
+    }
+    QCheckBox {
+        color: #0f172a;
+        spacing: 6px;
+    }
+    QCheckBox::indicator {
+        width: 16px;
+        height: 16px;
+        border: 1px solid #94a3b8;
+        background: #ffffff;
+        border-radius: 4px;
+    }
+    QCheckBox::indicator:checked {
+        background: #0284c7;
+        border-color: #0284c7;
+    }
+"""
+
+
 class StoreMainWindow(QWidget):
     """
     Dark-themed POS Window precisely matching media_1789838350422.png & media_1789838350452.png
@@ -272,94 +459,26 @@ class StoreMainWindow(QWidget):
         self.setWindowTitle(f"Mobile Store POS & Repairs - {mode_str}")
         self.resize(1180, 750)
 
-        # Global Dark Theme stylesheet matching screenshots
-        self.setStyleSheet("""
-            QWidget {
-                background-color: #1e1e1e;
-                color: #e0e0e0;
-                font-family: 'Segoe UI', Tahoma, sans-serif;
-                font-size: 12px;
-            }
-            QTabWidget::pane {
-                border: 1px solid #333333;
-                background-color: #1e1e1e;
-                border-radius: 4px;
-            }
-            QTabBar::tab {
-                background: #252526;
-                color: #999999;
-                padding: 7px 18px;
-                border: 1px solid #333333;
-                border-bottom: none;
-                margin-right: 2px;
-                border-top-left-radius: 4px;
-                border-top-right-radius: 4px;
-            }
-            QTabBar::tab:selected {
-                background: #2d2d30;
-                color: #ffffff;
-                font-weight: bold;
-                border-color: #444444;
-            }
-            QLineEdit, QComboBox {
-                background-color: #2b2b2b;
-                border: 1px solid #3f3f46;
-                border-radius: 3px;
-                padding: 5px 8px;
-                color: #ffffff;
-            }
-            QLineEdit:focus, QComboBox:focus {
-                border: 1px solid #0078d4;
-            }
-            QComboBox QAbstractItemView {
-                background-color: #252526;
-                color: #ffffff;
-                selection-background-color: #094771;
-            }
-            QTableWidget {
-                background-color: #1e1e1e;
-                alternate-background-color: #252526;
-                gridline-color: #2e2e2e;
-                border: 1px solid #333333;
-                color: #ffffff;
-                selection-background-color: #094771;
-                selection-color: #ffffff;
-            }
-            QHeaderView::section {
-                background-color: #252526;
-                color: #aaaaaa;
-                padding: 6px;
-                border: none;
-                border-bottom: 1px solid #383838;
-                font-weight: bold;
-            }
-            QPushButton {
-                background-color: #2d2d2d;
-                color: #cccccc;
-                border: 1px solid #3f3f46;
-                border-radius: 3px;
-                padding: 6px 14px;
-            }
-            QPushButton:hover {
-                background-color: #383838;
-                color: #ffffff;
-            }
-            QCheckBox {
-                color: #e0e0e0;
-                spacing: 6px;
-            }
-            QCheckBox::indicator {
-                width: 14px;
-                height: 14px;
-                border: 1px solid #555555;
-                background: #2b2b2b;
-                border-radius: 2px;
-            }
-            QCheckBox::indicator:checked {
-                background: #0078d4;
-                border-color: #0078d4;
-            }
-        """)
+        # Load saved theme preference
+        self.current_theme = "dark"
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cur = conn.cursor()
+            cur.execute("CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)")
+            cur.execute("SELECT value FROM settings WHERE key = 'theme'")
+            row = cur.fetchone()
+            if row and row[0]:
+                self.current_theme = row[0]
+            conn.close()
+        except Exception:
+            pass
+
+        # Set Window Icon
+        icon_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "app_icon.png")
+        if not os.path.exists(icon_path):
+            icon_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "app_icon.ico")
+        if os.path.exists(icon_path):
+            self.setWindowIcon(QIcon(icon_path))
 
         main_layout = QVBoxLayout()
         main_layout.setContentsMargins(15, 10, 15, 15)
@@ -444,6 +563,68 @@ class StoreMainWindow(QWidget):
         hw_label.setStyleSheet("color: #71717a; font-size: 11px;")
         top_bar.addWidget(hw_label)
 
+        top_bar.addSpacing(10)
+
+        # Quick Theme Switch Button (Dark / Light Mode)
+        self.theme_toggle_btn = QPushButton("🌙 Dark" if self.current_theme == "dark" else "☀️ Light")
+        self.theme_toggle_btn.setToolTip("تبديل مظهر البرنامج بين الداكن والفاتح (Toggle Dark/Light Mode)")
+        self.theme_toggle_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #334155;
+                color: #f8fafc;
+                font-size: 11px;
+                font-weight: bold;
+                padding: 3px 10px;
+                border-radius: 4px;
+                border: 1px solid #475569;
+            }
+            QPushButton:hover {
+                background-color: #475569;
+            }
+        """)
+        self.theme_toggle_btn.clicked.connect(self.toggle_theme)
+        top_bar.addWidget(self.theme_toggle_btn)
+
+        # One-Click Local Data Backup Button
+        self.backup_btn = QPushButton("💾 Backup")
+        self.backup_btn.setToolTip("تصدير نسخة احتياطية من كافة بيانات المحل (مخزن، فواتير، صيانة) إلى ملف JSON")
+        self.backup_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #0f766e;
+                color: #ffffff;
+                font-size: 11px;
+                font-weight: bold;
+                padding: 3px 10px;
+                border-radius: 4px;
+                border: none;
+            }
+            QPushButton:hover {
+                background-color: #0d9488;
+            }
+        """)
+        self.backup_btn.clicked.connect(self.export_store_backup)
+        top_bar.addWidget(self.backup_btn)
+
+        # Direct WhatsApp Support Button
+        self.support_btn = QPushButton("💬 Support")
+        self.support_btn.setToolTip("محادثة الدعم الفني المباشر عبر واتساب مع إرسال بيانات تشخيصية للمحل")
+        self.support_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #16a34a;
+                color: #ffffff;
+                font-size: 11px;
+                font-weight: bold;
+                padding: 3px 10px;
+                border-radius: 4px;
+                border: none;
+            }
+            QPushButton:hover {
+                background-color: #15803d;
+            }
+        """)
+        self.support_btn.clicked.connect(self.open_support)
+        top_bar.addWidget(self.support_btn)
+
         main_layout.addLayout(top_bar)
 
         # Tabs: matching screenshot tabs
@@ -458,6 +639,160 @@ class StoreMainWindow(QWidget):
         # Shortcut F12 for Checkout & Print Invoice
         f12_shortcut = QShortcut(QKeySequence(Qt.Key.Key_F12), self)
         f12_shortcut.activated.connect(self.checkout_invoice)
+
+        # Apply saved or initial theme
+        self.apply_theme(self.current_theme)
+
+    def apply_theme(self, theme):
+        """Applies Dark or Light stylesheet across the entire application and updates UI state."""
+        self.current_theme = theme
+        if theme == "dark":
+            self.setStyleSheet(DARK_THEME)
+            if hasattr(self, 'theme_toggle_btn'):
+                self.theme_toggle_btn.setText("🌙 Dark")
+                self.theme_toggle_btn.setStyleSheet("""
+                    QPushButton {
+                        background-color: #334155;
+                        color: #f8fafc;
+                        font-size: 11px;
+                        font-weight: bold;
+                        padding: 3px 10px;
+                        border-radius: 4px;
+                        border: 1px solid #475569;
+                    }
+                    QPushButton:hover {
+                        background-color: #475569;
+                    }
+                """)
+        else:
+            self.setStyleSheet(LIGHT_THEME)
+            if hasattr(self, 'theme_toggle_btn'):
+                self.theme_toggle_btn.setText("☀️ Light")
+                self.theme_toggle_btn.setStyleSheet("""
+                    QPushButton {
+                        background-color: #e2e8f0;
+                        color: #0f172a;
+                        font-size: 11px;
+                        font-weight: bold;
+                        padding: 3px 10px;
+                        border-radius: 4px;
+                        border: 1px solid #cbd5e1;
+                    }
+                    QPushButton:hover {
+                        background-color: #cbd5e1;
+                    }
+                """)
+
+        # Persist theme preference in SQLite
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cur = conn.cursor()
+            cur.execute("CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)")
+            cur.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('theme', ?)", (theme,))
+            conn.commit()
+            conn.close()
+        except Exception:
+            pass
+
+    def toggle_theme(self):
+        """Toggles between Dark and Light mode."""
+        new_theme = "light" if self.current_theme == "dark" else "dark"
+        self.apply_theme(new_theme)
+
+    def open_support(self):
+        """Opens WhatsApp with pre-filled store & device diagnostics."""
+        hw = self.license_info.get("hardware_id", "N/A")
+        store = self.username or "Unknown Store"
+        mode = "Offline (Local)" if self.is_offline else "Online (Cloud)"
+        server = self.api_base_url
+        date_now = datetime.now().strftime("%Y-%m-%d %H:%M")
+
+        unsynced_invoices = 0
+        unsynced_repairs = 0
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cur = conn.cursor()
+            cur.execute("SELECT COUNT(*) FROM invoices WHERE is_synced = 0")
+            unsynced_invoices = cur.fetchone()[0]
+            cur.execute("SELECT COUNT(*) FROM repairs WHERE is_synced = 0")
+            unsynced_repairs = cur.fetchone()[0]
+            conn.close()
+        except Exception:
+            pass
+
+        msg = (
+            f"مرحباً، أحتاج إلى دعم فني لبرنامج Mobile Store POS:\n"
+            f"🏬 المتجر: {store}\n"
+            f"💻 معرف الجهاز (Hardware ID): {hw}\n"
+            f"🌐 الخادم المتصل: {server}\n"
+            f"📡 حالة الاتصال: {mode}\n"
+            f"⏳ المعاملات المعلقة للمزامنة: فواتير ({unsynced_invoices})، صيانة ({unsynced_repairs})\n"
+            f"🕒 التاريخ: {date_now}\n"
+            f"-----------------------------------------\n"
+            f"وصف المشكلة: "
+        )
+        url = f"https://wa.me/201099616053?text={urllib.parse.quote(msg)}"
+        webbrowser.open(url)
+
+    def export_store_backup(self):
+        """Exports all local store data (inventory, sales invoices, repairs) to a JSON file."""
+        default_name = f"MobileStore_Backup_{self.username}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+        file_path, _ = QFileDialog.getSaveFileName(
+            self,
+            "حفظ نسخة احتياطية من بيانات المتجر",
+            default_name,
+            "JSON Backup Files (*.json);;All Files (*)"
+        )
+        if not file_path:
+            return
+
+        try:
+            conn = sqlite3.connect(self.db_path)
+            conn.row_factory = sqlite3.Row
+            cur = conn.cursor()
+
+            cur.execute("SELECT id, description, stock, cost, sale_price, server_id FROM stock_items")
+            stock_data = [dict(row) for row in cur.fetchall()]
+
+            cur.execute("SELECT id, summary, items_qty, total_amount, net_profit, date, items_json, is_synced FROM invoices")
+            invoice_data = [dict(row) for row in cur.fetchall()]
+
+            cur.execute("SELECT id, customer_name, device_info, issue, cost, payment, deposit, profit, status, date, server_id, is_synced FROM repairs")
+            repair_data = [dict(row) for row in cur.fetchall()]
+
+            conn.close()
+
+            backup_payload = {
+                "backup_version": "1.0",
+                "app_title": "Mobile Store POS & Repairs",
+                "exported_at": datetime.now().isoformat(),
+                "store_username": self.username,
+                "hardware_id": self.license_info.get("hardware_id"),
+                "counts": {
+                    "stock_items": len(stock_data),
+                    "invoices": len(invoice_data),
+                    "repairs": len(repair_data),
+                },
+                "data": {
+                    "stock_items": stock_data,
+                    "invoices": invoice_data,
+                    "repairs": repair_data,
+                }
+            }
+
+            with open(file_path, "w", encoding="utf-8") as f:
+                json.dump(backup_payload, f, ensure_ascii=False, indent=2)
+
+            QMessageBox.information(
+                self,
+                "تم حفظ النسخة الاحتياطية بنجاح",
+                f"تم تصدير نسخة احتياطية كاملة بنجاح إلى:\n{file_path}\n\n"
+                f"• الأصناف في المخزن: {len(stock_data)}\n"
+                f"• الفواتير المسجلة: {len(invoice_data)}\n"
+                f"• أوامر الصيانة: {len(repair_data)}"
+            )
+        except Exception as e:
+            QMessageBox.critical(self, "خطأ في النسخ الاحتياطي", f"تعذر حفظ النسخة الاحتياطية:\n{e}")
 
     # -------------------------------------------------------------
     # TAB 1: SALES POS

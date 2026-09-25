@@ -16,6 +16,7 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QIcon
 from PyQt6.QtWidgets import (
     QApplication,
     QFormLayout,
@@ -159,6 +160,13 @@ class MobileStoreApp(QWidget):
         self.setWindowTitle("Mobile Store - Login & Verification")
         self.setMinimumWidth(420)
 
+        # Set Window Icon
+        icon_path = os.path.join(BUNDLE_DIR, "app_icon.png")
+        if not os.path.exists(icon_path):
+            icon_path = os.path.join(BUNDLE_DIR, "app_icon.ico")
+        if os.path.exists(icon_path):
+            self.setWindowIcon(QIcon(icon_path))
+
         layout = QVBoxLayout()
         layout.setSpacing(12)
 
@@ -176,12 +184,13 @@ class MobileStoreApp(QWidget):
 
         form_layout = QFormLayout()
         self.username_input = QLineEdit()
-        self.username_input.setText("admin")
+        saved_username = self.get_session("username") or ""
+        self.username_input.setText(saved_username)
         self.username_input.setPlaceholderText("Username")
         form_layout.addRow("Username:", self.username_input)
 
         self.password_input = QLineEdit()
-        self.password_input.setText("admin123")
+        self.password_input.setText("")
         self.password_input.setPlaceholderText("Password")
         self.password_input.setEchoMode(QLineEdit.EchoMode.Password)
         form_layout.addRow("Password:", self.password_input)
@@ -383,7 +392,21 @@ class MobileStoreApp(QWidget):
 
 
 if __name__ == "__main__":
+    if platform.system() == "Windows":
+        try:
+            import ctypes
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("mobilestore.pos.desktop.1.0")
+        except Exception:
+            pass
+
     app = QApplication(sys.argv)
+
+    icon_path = os.path.join(BUNDLE_DIR, "app_icon.png")
+    if not os.path.exists(icon_path):
+        icon_path = os.path.join(BUNDLE_DIR, "app_icon.ico")
+    if os.path.exists(icon_path):
+        app.setWindowIcon(QIcon(icon_path))
+
     window = MobileStoreApp()
     window.show()
     window.raise_()

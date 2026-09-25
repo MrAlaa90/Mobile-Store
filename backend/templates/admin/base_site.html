@@ -1,0 +1,225 @@
+{% extends "admin/base.html" %}
+{% load static %}
+
+{% block title %}{{ title }} | Mobile-Store Super Admin{% endblock %}
+
+{% block branding %}
+<div style="display: flex; align-items: center; gap: 12px; padding: 6px 0;">
+    <div style="width: 36px; height: 36px; border-radius: 10px; background: linear-gradient(135deg, #0284c7, #38bdf8); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; box-shadow: 0 4px 12px rgba(2, 132, 199, 0.4);">
+        📱
+    </div>
+    <div>
+        <div style="font-weight: 800; font-size: 1.15rem; color: #f8fafc; letter-spacing: -0.02em;">
+            Mobile-Store <span style="background: linear-gradient(135deg, #38bdf8, #818cf8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 0.85rem; font-weight: 700;">ADMIN</span>
+        </div>
+        <div style="font-size: 0.72rem; color: #94a3b8; display: flex; align-items: center; gap: 5px;">
+            <span style="width: 6px; height: 6px; border-radius: 50%; background-color: #22c55e; display: inline-block;"></span>
+            Security Gate & Cloud Controller
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extrastyle %}
+{{ block.super }}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+    :root {
+        --primary: #0284c7;
+        --primary-hover: #0369a1;
+        --bg-main: #0b0f19;
+        --bg-surface: #111827;
+        --bg-card: #1f2937;
+        --border-color: #374151;
+        --text-primary: #f9fafb;
+        --text-secondary: #9ca3af;
+        --accent-green: #10b981;
+    }
+
+    body, input, select, textarea, button {
+        font-family: 'Inter', 'Cairo', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+    }
+
+    body {
+        background-color: var(--bg-main) !important;
+        color: var(--text-primary) !important;
+    }
+
+    #header {
+        background: #0f172a !important;
+        border-bottom: 1px solid #1e293b !important;
+        padding: 10px 24px !important;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.4) !important;
+    }
+
+    #header a:link, #header a:visited {
+        color: #e2e8f0 !important;
+    }
+
+    div.breadcrumbs {
+        background: #1e293b !important;
+        border-bottom: 1px solid #334155 !important;
+        color: #94a3b8 !important;
+        padding: 10px 24px !important;
+        font-size: 13px !important;
+    }
+
+    div.breadcrumbs a {
+        color: #38bdf8 !important;
+        text-decoration: none !important;
+        font-weight: 500 !important;
+    }
+
+    .module {
+        background: #1e293b !important;
+        border: 1px solid #334155 !important;
+        border-radius: 12px !important;
+        overflow: hidden !important;
+        box-shadow: 0 4px 14px rgba(0,0,0,0.25) !important;
+        margin-bottom: 24px !important;
+    }
+
+    .module h2, .module caption {
+        background: #0f172a !important;
+        color: #38bdf8 !important;
+        font-weight: 700 !important;
+        letter-spacing: 0.02em !important;
+        padding: 12px 18px !important;
+        border-bottom: 1px solid #334155 !important;
+    }
+
+    #content-main {
+        padding: 10px !important;
+    }
+
+    /* Modern Table Styling */
+    #changelist table {
+        border-collapse: separate !important;
+        border-spacing: 0 !important;
+        width: 100% !important;
+        background: #1e293b !important;
+        border-radius: 10px !important;
+        overflow: hidden !important;
+        border: 1px solid #334155 !important;
+    }
+
+    #changelist thead th {
+        background: #0f172a !important;
+        color: #94a3b8 !important;
+        font-size: 12px !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.05em !important;
+        padding: 12px 16px !important;
+        border-bottom: 2px solid #334155 !important;
+    }
+
+    #changelist thead th a {
+        color: #cbd5e1 !important;
+    }
+
+    #changelist tbody tr {
+        background: #1e293b !important;
+        border-bottom: 1px solid #2d3748 !important;
+        transition: background 0.15s ease !important;
+    }
+
+    #changelist tbody tr:hover {
+        background: #283548 !important;
+    }
+
+    #changelist tbody td, #changelist tbody th {
+        padding: 12px 16px !important;
+        color: #e2e8f0 !important;
+        border-bottom: 1px solid #334155 !important;
+    }
+
+    /* Buttons */
+    .button, input[type=submit], input[type=button], .submit-row input, a.button {
+        background: linear-gradient(135deg, #0284c7, #0369a1) !important;
+        color: #ffffff !important;
+        border: none !important;
+        border-radius: 8px !important;
+        padding: 8px 18px !important;
+        font-weight: 600 !important;
+        font-size: 13px !important;
+        box-shadow: 0 2px 8px rgba(2, 132, 199, 0.3) !important;
+        transition: all 0.2s ease !important;
+        cursor: pointer !important;
+    }
+
+    .button:hover, input[type=submit]:hover, input[type=button]:hover, .submit-row input:hover {
+        background: linear-gradient(135deg, #0369a1, #075985) !important;
+        box-shadow: 0 4px 14px rgba(2, 132, 199, 0.5) !important;
+        transform: translateY(-1px) !important;
+    }
+
+    .button.default, input[type=submit].default {
+        background: linear-gradient(135deg, #2563eb, #1d4ed8) !important;
+    }
+
+    /* Filter Sidebar */
+    #changelist-filter {
+        background: #1e293b !important;
+        border: 1px solid #334155 !important;
+        border-radius: 12px !important;
+        margin-left: 20px !important;
+        box-shadow: 0 4px 14px rgba(0,0,0,0.2) !important;
+    }
+
+    #changelist-filter h2 {
+        background: #0f172a !important;
+        color: #38bdf8 !important;
+        border-radius: 12px 12px 0 0 !important;
+        padding: 12px 16px !important;
+    }
+
+    #changelist-filter a {
+        color: #94a3b8 !important;
+    }
+
+    #changelist-filter li.selected a {
+        color: #38bdf8 !important;
+        font-weight: 700 !important;
+    }
+
+    /* Forms */
+    input[type=text], input[type=password], input[type=email], input[type=url], 
+    input[type=number], input[type=tel], textarea, select {
+        background-color: #0f172a !important;
+        color: #f8fafc !important;
+        border: 1px solid #334155 !important;
+        border-radius: 6px !important;
+        padding: 8px 12px !important;
+    }
+
+    input:focus, textarea:focus, select:focus {
+        border-color: #0284c7 !important;
+        outline: none !important;
+        box-shadow: 0 0 0 2px rgba(2, 132, 199, 0.25) !important;
+    }
+
+    /* Messages & Alerts */
+    ul.messagelist li.success {
+        background: #064e3b !important;
+        color: #6ee7b7 !important;
+        border: 1px solid #059669 !important;
+        border-radius: 8px !important;
+    }
+
+    ul.messagelist li.warning {
+        background: #78350f !important;
+        color: #fde68a !important;
+        border: 1px solid #d97706 !important;
+        border-radius: 8px !important;
+    }
+
+    ul.messagelist li.error {
+        background: #7f1d1d !important;
+        color: #fca5a5 !important;
+        border: 1px solid #dc2626 !important;
+        border-radius: 8px !important;
+    }
+</style>
+{% endblock %}

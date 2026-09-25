@@ -14,10 +14,14 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
+import os
 from django.contrib import admin
 from django.urls import path, include
 
+# Secret Admin Portal URL (Shielded against automated scanners & wordlists)
+ADMIN_PATH = os.environ.get('DJANGO_ADMIN_URL', 'ms-core-gate-7x9q/').strip('/') + '/'
+
 urlpatterns = [
-    path('admin/', admin.site.urls),
+    path(ADMIN_PATH, admin.site.urls),
     path('api/', include('api.urls')),
 ]

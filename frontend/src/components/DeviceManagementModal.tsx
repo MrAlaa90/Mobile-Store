@@ -385,22 +385,10 @@ const DeviceManagementModal: React.FC<DeviceManagementModalProps> = ({ isOpen, o
             <span>حذف أي جهاز يحرر مقعد الترخيص فوراً لسيرفر المتجر.</span>
           </div>
 
-          <a
-            href="/admin/api/device/"
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{
-              color: 'var(--primary-light)',
-              textDecoration: 'none',
-              fontWeight: 600,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 4
-            }}
-          >
-            <span>⚙️ لوحة تحكم Django Admin المتقدمة</span>
-            <span>↗</span>
-          </a>
+          <div style={{ color: 'var(--text-muted)', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: 4 }}>
+            <span>🔒</span>
+            <span>نظام تراخيص وأجهزة مؤمن سحابياً</span>
+          </div>
         </div>
       </div>
     </div>,

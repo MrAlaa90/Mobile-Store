@@ -45,7 +45,9 @@ const Navbar: React.FC<NavbarProps> = ({ username, onLogout }) => {
             onClick={() => navigate('/')}
             className="navbar-brand"
           >
-            <div className="navbar-logo-icon">📱</div>
+            <div className="navbar-logo-icon" style={{ overflow: 'hidden', padding: 0 }}>
+              <img src="/logo.png" alt="Mobile-Store" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 8 }} />
+            </div>
             <div>
               <div className="navbar-brand-name">
                 Mobile-Store <span className="navbar-brand-badge">POS</span>
