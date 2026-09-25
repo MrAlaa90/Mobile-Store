@@ -1,5 +1,15 @@
+import secrets
+from datetime import timedelta
 from django.db import models
 from django.contrib.auth.models import AbstractUser
+from django.db.models import Case, When, Value, IntegerField
+from django.utils import timezone
+
+
+def generate_license_key(prefix="MS-TR"):
+    token = secrets.token_hex(4).upper()
+    return f"{prefix}-{token[:4]}-{token[4:]}"
+
 
 class User(AbstractUser):
     name = models.CharField(max_length=255)
@@ -15,13 +25,20 @@ class User(AbstractUser):
         return f"{self.username}{store_display}"
 
     def get_active_license(self):
-        from django.utils import timezone
         today = timezone.localdate()
         return self.licenses.filter(
             status='active',
             start_date__lte=today,
             end_date__gte=today
-        ).first()
+        ).annotate(
+            priority=Case(
+                When(type='paid', then=Value(2)),
+                When(type='trial', then=Value(1)),
+                default=Value(0),
+                output_field=IntegerField()
+            )
+        ).order_by('-priority', '-end_date').first()
+
 
 class Customer(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='customers')
@@ -33,32 +50,57 @@ class Customer(models.Model):
     def __str__(self):
         return f"{self.name} ({self.phone})"
 
+
 class License(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='licenses')
-    license_key = models.CharField(max_length=100, unique=True)
-    start_date = models.DateField()
-    end_date = models.DateField()
-    type = models.CharField(max_length=20, choices=[('trial', 'Trial'), ('paid', 'Paid')])
+    license_key = models.CharField(max_length=100, unique=True, blank=True, help_text="اتركه فارغاً ليتم توليد كود ترخيص تلقائي")
+    start_date = models.DateField(default=timezone.localdate)
+    end_date = models.DateField(blank=True, null=True, help_text="اتركه فارغاً ليتم حسابه تلقائياً (سنة للمدفوع، 20 يوماً للتجريبي)")
+    type = models.CharField(max_length=20, choices=[('trial', 'Trial'), ('paid', 'Paid')], default='paid')
     status = models.CharField(max_length=20, choices=[('active', 'Active'), ('expired', 'Expired'), ('revoked', 'Revoked')], default='active')
     max_devices = models.PositiveIntegerField(default=3, help_text="الحد الأقصى للأجهزة المصرح بها (ديسكتوب وموبايل)")
     notes = models.CharField(max_length=255, blank=True, default='')
 
     @property
     def is_valid(self):
-        from django.utils import timezone
         today = timezone.localdate()
+        if not self.end_date:
+            return False
         return self.status == 'active' and self.start_date <= today <= self.end_date
 
     @property
     def days_remaining(self):
-        from django.utils import timezone
         today = timezone.localdate()
-        if self.end_date < today:
+        if not self.end_date or self.end_date < today:
             return 0
         return (self.end_date - today).days
 
+    def save(self, *args, **kwargs):
+        if not self.start_date:
+            self.start_date = timezone.localdate()
+        if not self.end_date:
+            days = 365 if self.type == 'paid' else 20
+            self.end_date = self.start_date + timedelta(days=days)
+        if not self.license_key:
+            prefix = "MS-PAID" if self.type == 'paid' else "MS-TR"
+            key = generate_license_key(prefix)
+            while License.objects.filter(license_key=key).exists():
+                key = generate_license_key(prefix)
+            self.license_key = key
+
+        # If activating a paid license, supersede active trial licenses for this store
+        if self.status == 'active' and self.type == 'paid' and self.user_id:
+            License.objects.filter(
+                user_id=self.user_id,
+                type='trial',
+                status='active'
+            ).exclude(pk=self.pk).update(status='expired')
+
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return f"{self.license_key} ({self.get_type_display()}) - {self.status}"
+
 
 class Device(models.Model):
     DEVICE_TYPES = [
@@ -168,16 +210,8 @@ class Repair(models.Model):
         return f"Repair for {name}: {self.device_info} ({self.get_status_display()})"
 
 
-import secrets
-from datetime import timedelta
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-from django.utils import timezone
-
-
-def generate_license_key(prefix="MS-TR"):
-    token = secrets.token_hex(4).upper()
-    return f"{prefix}-{token[:4]}-{token[4:]}"
 
 
 def create_trial_license_for_user(user, days=20, max_devices=3):

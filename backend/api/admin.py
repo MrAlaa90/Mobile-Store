@@ -61,6 +61,18 @@ class CustomUserAdmin(BaseUserAdmin):
         }),
     )
 
+    add_fieldsets = BaseUserAdmin.add_fieldsets + (
+        ('معلومات المتجر والتجارة (Store Profile)', {
+            'fields': ('store_name', 'phone', 'role'),
+        }),
+    )
+
+    def get_inlines(self, request, obj=None):
+        # Do not render inlines on the Add User screen to prevent orphan foreign keys
+        if obj is None:
+            return []
+        return self.inlines
+
     def store_name_display(self, obj):
         return obj.store_name or obj.name or '-'
     store_name_display.short_description = "اسم المتجر"
@@ -113,6 +125,17 @@ class LicenseAdmin(admin.ModelAdmin):
     search_fields = ('license_key', 'user__username', 'user__store_name', 'user__name')
     date_hierarchy = 'end_date'
     actions = ['extend_30_days', 'upgrade_to_one_year_paid', 'revoke_licenses']
+
+    def get_changeform_initial_data(self, request):
+        today = timezone.localdate()
+        return {
+            'start_date': today,
+            'end_date': today + timedelta(days=365),
+            'type': 'paid',
+            'status': 'active',
+            'license_key': generate_license_key("MS-PAID"),
+            'max_devices': 3,
+        }
 
     def store_display(self, obj):
         return f"{obj.user.store_name or obj.user.username} ({obj.user.phone or 'بدون هاتف'})"

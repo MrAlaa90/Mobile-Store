@@ -200,21 +200,14 @@ class LicenseCheckView(APIView):
             end_date__lt=today
         ).update(status='expired')
 
-        licenses = License.objects.filter(
-            user=user,
-            status='active',
-            start_date__lte=today,
-            end_date__gte=today,
-        )
+        active_license = user.get_active_license()
 
-        if not licenses.exists():
+        if not active_license:
             return Response({
                 "error": "license_expired",
                 "detail": "انتهت فترة الرخصة التجريبية (20 يوماً) أو الاشتراك السنوي لهذا المتجر. يرجى التواصل مع الإدارة لتجديد الاشتراك.",
                 "status": "expired"
             }, status=status.HTTP_403_FORBIDDEN)
-
-        active_license = licenses.first()
 
         if hardware_id:
             device = Device.objects.filter(user=user, hardware_id=hardware_id).first()
