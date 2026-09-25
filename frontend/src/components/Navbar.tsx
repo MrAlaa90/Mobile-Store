@@ -128,8 +128,8 @@ const Navbar: React.FC<NavbarProps> = ({ username, onLogout }) => {
           })}
         </nav>
 
-        {/* Right Tools (Theme Toggle, User Info, Logout) */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        {/* Right Tools (Desktop Only) */}
+        <div className="desktop-actions-only" style={{ alignItems: 'center', gap: 8 }}>
           {/* Downloads Center Button */}
           <button
             onClick={() => setShowDownloads(true)}
@@ -150,7 +150,7 @@ const Navbar: React.FC<NavbarProps> = ({ username, onLogout }) => {
             title="تحميل تطبيق الموبايل وبرنامج الديسكتوب"
           >
             <span style={{ fontSize: '1rem' }}>📥</span>
-            <span className="nav-hide-mobile">تنزيل التطبيقات</span>
+            <span>تنزيل التطبيقات</span>
           </button>
 
           {/* Theme Switcher Button */}
@@ -200,7 +200,7 @@ const Navbar: React.FC<NavbarProps> = ({ username, onLogout }) => {
             }}>
               {(username || 'U')[0].toUpperCase()}
             </div>
-            <div className="nav-hide-mobile" style={{ display: 'flex', flexDirection: 'column' }}>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
               <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-primary)' }}>
                 {username || 'Store Admin'}
               </span>
@@ -228,8 +228,53 @@ const Navbar: React.FC<NavbarProps> = ({ username, onLogout }) => {
             title="تسجيل الخروج من النظام"
           >
             <span>🚪</span>
-            <span className="nav-hide-mobile">خروج</span>
+            <span>خروج</span>
           </button>
+        </div>
+
+        {/* Dedicated Mobile Controls Strip (Mobile Only) */}
+        <div className="mobile-user-strip">
+          <div className="mobile-user-header">
+            <div className="mobile-user-info">
+              <div className="mobile-user-avatar">
+                {(username || 'U')[0].toUpperCase()}
+              </div>
+              <div>
+                <span style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>المستخدم: </span>
+                <strong style={{ color: 'var(--text-primary)', fontSize: '0.9rem' }}>{username || 'Store Admin'}</strong>
+              </div>
+            </div>
+            <span className="mobile-status-dot">
+              <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: '#10b981', display: 'inline-block' }}></span>
+              متصل
+            </span>
+          </div>
+
+          <div className="mobile-quick-actions">
+            <button
+              onClick={() => setShowDownloads(true)}
+              className="btn-chip-downloads"
+              title="تحميل تطبيق الموبايل وبرنامج الديسكتوب"
+            >
+              <span>📥</span>
+              <span>تنزيل التطبيقات</span>
+            </button>
+            <button
+              onClick={toggleTheme}
+              className="btn-chip-theme"
+              title="تبديل الوضع الليلي / الفاتح"
+            >
+              <span>{theme === 'dark' ? '☀️ فاتح' : '🌙 داكن'}</span>
+            </button>
+            <button
+              onClick={onLogout}
+              className="btn-chip-logout"
+              title="تسجيل الخروج من النظام"
+            >
+              <span>🚪</span>
+              <span>خروج</span>
+            </button>
+          </div>
         </div>
       </div>
 
