@@ -184,12 +184,7 @@ const SalesList: React.FC = () => {
       </div>
 
       {/* Summary KPI Bar */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-        gap: 16,
-        marginBottom: 22
-      }}>
+      <div className="kpi-grid">
         <div className="glass-card" style={{ padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>عدد العمليات المعروضة</div>

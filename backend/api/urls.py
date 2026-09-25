@@ -10,6 +10,7 @@ from .views import (
     OfflineTokenView,
     RepairViewSet,
     SaleViewSet,
+    StoreRegistrationView,
 )
 
 router = DefaultRouter()
@@ -22,6 +23,7 @@ router.register('devices', DeviceViewSet, basename='device')
 urlpatterns = [
     path('health/', HealthCheckView.as_view(), name='health_check'),
     path('', include(router.urls)),
+    path('auth/register-store/', StoreRegistrationView.as_view(), name='store_register'),
     path('auth/login/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('auth/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('license/check/', LicenseCheckView.as_view(), name='license_check'),

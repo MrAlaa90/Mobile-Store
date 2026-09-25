@@ -2,7 +2,9 @@ import base64
 import hashlib
 import json
 import os
+import platform
 import sqlite3
+import subprocess
 import sys
 import uuid
 import webbrowser
@@ -27,22 +29,58 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-if BASE_DIR not in sys.path:
-    sys.path.insert(0, BASE_DIR)
+if getattr(sys, 'frozen', False):
+    BUNDLE_DIR = sys._MEIPASS
+    DATA_DIR = os.path.join(os.environ.get('LOCALAPPDATA', os.environ.get('APPDATA', os.path.dirname(sys.executable))), 'MobileStore')
+else:
+    BUNDLE_DIR = os.path.dirname(os.path.abspath(__file__))
+    DATA_DIR = BUNDLE_DIR
+
+os.makedirs(DATA_DIR, exist_ok=True)
+
+if BUNDLE_DIR not in sys.path:
+    sys.path.insert(0, BUNDLE_DIR)
 from app_window import StoreMainWindow
 
 API_BASE_URL = os.environ.get("API_BASE_URL", "http://34.175.186.221/api")
 WEB_URL = os.environ.get("WEB_URL", "http://34.175.186.221/")
-DB_FILE = os.path.join(BASE_DIR, "local_storage.db")
-PUBLIC_KEY_PATH = os.path.join(BASE_DIR, "keys", "public_key.pem")
-LICENSE_FILE = os.path.join(BASE_DIR, "license.json")
+DB_FILE = os.path.join(DATA_DIR, "local_storage.db")
+PUBLIC_KEY_PATH = os.path.join(BUNDLE_DIR, "keys", "public_key.pem")
+LICENSE_FILE = os.path.join(DATA_DIR, "license.json")
+
+_cached_hwid = None
 
 
 def get_hardware_id():
-    """Generates a consistent unique hardware ID based on the machine's MAC address."""
-    mac = uuid.getnode()
-    return hashlib.sha256(str(mac).encode()).hexdigest()
+    """
+    Generates an immutable hardware fingerprint bound to this physical machine:
+    Combines (Motherboard Serial + CPU Processor ID + System UUID + MAC Address).
+    """
+    global _cached_hwid
+    if _cached_hwid:
+        return _cached_hwid
+
+    parts = []
+    if platform.system() == "Windows":
+        try:
+            ps_cmd = "(Get-CimInstance Win32_BaseBoard).SerialNumber; (Get-CimInstance Win32_Processor).ProcessorId; (Get-CimInstance Win32_ComputerSystemProduct).UUID"
+            result = subprocess.check_output(
+                ["powershell", "-NoProfile", "-NonInteractive", "-Command", ps_cmd],
+                text=True,
+                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+                timeout=4
+            ).strip().splitlines()
+            for line in result:
+                line_clean = line.strip()
+                if line_clean and line_clean.lower() != "none" and "to be filled" not in line_clean.lower():
+                    parts.append(line_clean)
+        except Exception:
+            pass
+
+    parts.append(str(uuid.getnode()))
+    combined = "|".join(parts)
+    _cached_hwid = hashlib.sha256(combined.encode("utf-8")).hexdigest()
+    return _cached_hwid
 
 
 def get_machine_cipher():
@@ -275,10 +313,17 @@ class MobileStoreApp(QWidget):
                     self.hide()
                     return
                 else:
-                    self.verify_status.setText("Status: No active license found")
-                    QMessageBox.warning(self, "Unauthorized", "No active license associated with this account or machine.")
+                    self.verify_status.setText("الحالة: لا توجد رخصة نشطة")
+                    QMessageBox.warning(self, "غير مصرح", "لا توجد رخصة سارية مرتبطة بهذا الحساب أو الجهاز.")
             else:
-                self.verify_status.setText("Status: License Check Error")
+                try:
+                    err_payload = verify_response.json()
+                    err_msg = err_payload.get("detail") or err_payload.get("error") or "فشل التحقق من صلاحية الترخيص."
+                except Exception:
+                    err_msg = f"خطأ من السيرفر: رمز الاستجابة {verify_response.status_code}"
+                self.verify_status.setText(f"الحالة: {err_msg}")
+                QMessageBox.critical(self, "فشل التحقق من الترخيص", err_msg)
+                return
 
         except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as net_err:
             # Network error -> Trigger Offline Mode Validation

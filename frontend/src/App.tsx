@@ -58,17 +58,17 @@ function Login() {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      padding: '24px',
+      padding: '16px',
       position: 'relative',
       background: 'radial-gradient(circle at 50% 20%, rgba(2, 132, 199, 0.15) 0%, transparent 60%)'
     }}>
       {/* Top right theme toggle */}
-      <div style={{ position: 'absolute', top: 24, right: 24 }}>
+      <div style={{ position: 'absolute', top: 16, right: 16 }}>
         <button
           onClick={toggleTheme}
           style={{
-            width: 42,
-            height: 42,
+            width: 40,
+            height: 40,
             borderRadius: '12px',
             border: '1px solid var(--border-color)',
             background: 'var(--bg-surface-elevated)',
@@ -77,7 +77,7 @@ function Login() {
             alignItems: 'center',
             justifyContent: 'center',
             cursor: 'pointer',
-            fontSize: '1.2rem',
+            fontSize: '1.1rem',
             boxShadow: 'var(--shadow-sm)'
           }}
           title={theme === 'dark' ? 'Switch to Light' : 'Switch to Dark'}
@@ -88,8 +88,8 @@ function Login() {
 
       <div className="glass-card animate-fade-in" style={{
         width: '100%',
-        maxWidth: 440,
-        padding: '36px 32px',
+        maxWidth: 420,
+        padding: '28px 20px',
         position: 'relative'
       }}>
         {/* Header Branding */}
@@ -301,7 +301,7 @@ function Dashboard() {
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+        <div className="mobile-actions-wrap">
           <button onClick={() => navigate('/sales')} className="btn btn-primary">
             <span>➕</span>
             <span>تسجيل عملية بيع (POS)</span>
@@ -365,12 +365,7 @@ function Dashboard() {
       </div>
 
       {/* Visual Analytics & Charts Section */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(380px, 1fr))',
-        gap: 24,
-        marginBottom: 28
-      }}>
+      <div className="analytics-grid">
         {/* Sales & Profit Breakdown Visual Card */}
         <div className="glass-card" style={{ padding: 24 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
@@ -481,11 +476,7 @@ function Dashboard() {
       </div>
 
       {/* Recent Activity Feeds */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))',
-        gap: 24
-      }}>
+      <div className="recent-activity-grid">
         {/* Latest Sales */}
         <div className="glass-card" style={{ padding: 24 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>

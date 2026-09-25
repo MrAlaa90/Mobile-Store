@@ -25,6 +25,7 @@ class MobileStoreApiTests(APITestCase):
         )
 
         today = timezone.localdate()
+        self.user_a.licenses.all().delete()
         self.license_a = License.objects.create(
             user=self.user_a,
             license_key='MS-TEST-KEY-2026',
@@ -132,3 +133,66 @@ class MobileStoreApiTests(APITestCase):
         self.assertIn('signature', response.data)
         self.assertEqual(response.data['payload']['hardware_id'], hw_id)
         self.assertEqual(response.data['payload']['license_key'], self.license_a.license_key)
+
+    def test_store_registration_auto_provisions_20_day_trial(self):
+        signup_data = {
+            'store_name': 'New Star Mobile',
+            'username': 'newstar',
+            'password': 'secretpassword123',
+            'phone': '01123456789',
+            'email': 'newstar@example.com',
+        }
+        response = self.client.post(reverse('store_register'), signup_data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertIn('tokens', response.data)
+        self.assertIn('license', response.data)
+        self.assertEqual(response.data['license']['type'], 'trial')
+        self.assertEqual(response.data['license']['days_remaining'], 20)
+        self.assertEqual(response.data['license']['max_devices'], 3)
+
+        # Verify user in DB has store_name
+        new_user = User.objects.get(username='newstar')
+        self.assertEqual(new_user.store_name, 'New Star Mobile')
+        self.assertTrue(new_user.licenses.filter(type='trial', status='active').exists())
+
+    def test_max_devices_limit_enforced(self):
+        self.client.force_authenticate(user=self.user_a)
+        # License A has max_devices = 3 (default)
+        self.license_a.max_devices = 2
+        self.license_a.save()
+
+        # Connect Device 1 -> OK
+        resp1 = self.client.get(reverse('license_check'), {'hardware_id': 'hw-device-01'})
+        self.assertEqual(resp1.status_code, status.HTTP_200_OK)
+
+        # Connect Device 2 -> OK
+        resp2 = self.client.get(reverse('license_check'), {'hardware_id': 'hw-device-02'})
+        self.assertEqual(resp2.status_code, status.HTTP_200_OK)
+
+        # Connect Device 3 -> Should exceed max_devices (2) -> 403 Forbidden!
+        resp3 = self.client.get(reverse('license_check'), {'hardware_id': 'hw-device-03'})
+        self.assertEqual(resp3.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(resp3.data.get('error'), 'max_devices_exceeded')
+
+    def test_cross_tenant_sale_rejected(self):
+        # Store A creates inventory item
+        item_a = Inventory.objects.create(
+            user=self.user_a,
+            name='iPad Air',
+            brand='Apple',
+            model='Air 5',
+            purchase_price='500.00',
+            sale_price='650.00',
+            status='available',
+        )
+
+        # Store B tries to sell Store A's item!
+        self.client.force_authenticate(user=self.user_b)
+        response = self.client.post(reverse('sale-list'), {
+            'item': item_a.id,
+            'sale_price': '650.00'
+        }, format='json')
+        # Should be rejected with validation error!
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('item', response.data)
+

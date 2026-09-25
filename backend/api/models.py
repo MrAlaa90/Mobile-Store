@@ -3,6 +3,7 @@ from django.contrib.auth.models import AbstractUser
 
 class User(AbstractUser):
     name = models.CharField(max_length=255)
+    store_name = models.CharField(max_length=255, blank=True, default='')
     phone = models.CharField(max_length=20, blank=True, null=True)
     role = models.CharField(max_length=10, choices=[('admin', 'Admin'), ('user', 'User')], default='user')
     created_at = models.DateTimeField(auto_now_add=True)
@@ -10,7 +11,17 @@ class User(AbstractUser):
     REQUIRED_FIELDS = ['email', 'name']
 
     def __str__(self):
-        return self.username
+        store_display = f" - {self.store_name}" if self.store_name else ""
+        return f"{self.username}{store_display}"
+
+    def get_active_license(self):
+        from django.utils import timezone
+        today = timezone.localdate()
+        return self.licenses.filter(
+            status='active',
+            start_date__lte=today,
+            end_date__gte=today
+        ).first()
 
 class Customer(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='customers')
@@ -28,17 +39,41 @@ class License(models.Model):
     start_date = models.DateField()
     end_date = models.DateField()
     type = models.CharField(max_length=20, choices=[('trial', 'Trial'), ('paid', 'Paid')])
-    status = models.CharField(max_length=20, choices=[('active', 'Active'), ('expired', 'Expired')], default='active')
+    status = models.CharField(max_length=20, choices=[('active', 'Active'), ('expired', 'Expired'), ('revoked', 'Revoked')], default='active')
+    max_devices = models.PositiveIntegerField(default=3, help_text="الحد الأقصى للأجهزة المصرح بها (ديسكتوب وموبايل)")
+    notes = models.CharField(max_length=255, blank=True, default='')
+
+    @property
+    def is_valid(self):
+        from django.utils import timezone
+        today = timezone.localdate()
+        return self.status == 'active' and self.start_date <= today <= self.end_date
+
+    @property
+    def days_remaining(self):
+        from django.utils import timezone
+        today = timezone.localdate()
+        if self.end_date < today:
+            return 0
+        return (self.end_date - today).days
 
     def __str__(self):
-        return f"{self.license_key} - {self.status}"
+        return f"{self.license_key} ({self.get_type_display()}) - {self.status}"
 
 class Device(models.Model):
+    DEVICE_TYPES = [
+        ('desktop', 'Desktop (كاشير ديسكتوب)'),
+        ('mobile', 'Mobile (تطبيق هاتف)'),
+        ('tablet', 'Tablet (تابلت)'),
+    ]
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='devices')
     name = models.CharField(max_length=255, blank=True, default='')
     hardware_id = models.CharField(max_length=255, unique=True)
+    device_type = models.CharField(max_length=20, choices=DEVICE_TYPES, default='desktop')
+    is_active = models.BooleanField(default=True)
     license = models.ForeignKey(License, on_delete=models.SET_NULL, null=True, blank=True, related_name='devices')
     created_at = models.DateTimeField(auto_now_add=True)
+    last_seen = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return f"{self.name or 'Device'} ({self.hardware_id[:12]})"
@@ -133,3 +168,38 @@ class Repair(models.Model):
         return f"Repair for {name}: {self.device_info} ({self.get_status_display()})"
 
 
+import secrets
+from datetime import timedelta
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+from django.utils import timezone
+
+
+def generate_license_key(prefix="MS-TR"):
+    token = secrets.token_hex(4).upper()
+    return f"{prefix}-{token[:4]}-{token[4:]}"
+
+
+def create_trial_license_for_user(user, days=20, max_devices=3):
+    today = timezone.localdate()
+    license_key = generate_license_key("MS-TR")
+    while License.objects.filter(license_key=license_key).exists():
+        license_key = generate_license_key("MS-TR")
+    return License.objects.create(
+        user=user,
+        license_key=license_key,
+        start_date=today,
+        end_date=today + timedelta(days=days),
+        type='trial',
+        status='active',
+        max_devices=max_devices,
+        notes=f"رخصة تجريبية تلقائية لمدة {days} يوماً (أقصى أجهزة: {max_devices})"
+    )
+
+
+@receiver(post_save, sender=User)
+def auto_provision_trial_license(sender, instance, created, **kwargs):
+    """Automatically generates a 20-day trial license when a new store owner account is created."""
+    if created and not instance.is_superuser:
+        if not instance.licenses.exists():
+            create_trial_license_for_user(instance, days=20, max_devices=3)

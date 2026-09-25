@@ -209,12 +209,7 @@ const RepairManagement: React.FC = () => {
       </div>
 
       {/* Overview Stat Cards */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))',
-        gap: 14,
-        marginBottom: 22
-      }}>
+      <div className="kpi-grid">
         <div className="glass-card" style={{ padding: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>أجهزة قيد العمل بالورشة</div>
@@ -485,7 +480,7 @@ const RepairManagement: React.FC = () => {
                 </div>
 
                 {!selectedCustomer && (
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                  <div className="responsive-grid-2">
                     <div className="form-group">
                       <label className="form-label">اسم العميل</label>
                       <input
@@ -508,7 +503,7 @@ const RepairManagement: React.FC = () => {
                 )}
 
                 {/* Financial Details */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                <div className="responsive-grid-2">
                   <div className="form-group">
                     <label className="form-label">تكلفة قطع الغيار على المحل (EGP)</label>
                     <input
@@ -535,7 +530,7 @@ const RepairManagement: React.FC = () => {
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                <div className="responsive-grid-2">
                   <div className="form-group">
                     <label className="form-label">المبلغ المدفوع مقدماً (Deposit)</label>
                     <input

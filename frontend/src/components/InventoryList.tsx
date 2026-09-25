@@ -148,12 +148,7 @@ const InventoryList: React.FC = () => {
       </div>
 
       {/* Overview Stat Badges */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-        gap: 14,
-        marginBottom: 22
-      }}>
+      <div className="kpi-grid">
         <div className="glass-card" style={{ padding: '14px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>إجمالي الأجهزة المعروضة</div>
@@ -383,7 +378,7 @@ const InventoryList: React.FC = () => {
                   />
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                <div className="responsive-grid-2">
                   <div className="form-group">
                     <label className="form-label">الماركة (Brand)</label>
                     <input
@@ -406,7 +401,7 @@ const InventoryList: React.FC = () => {
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                <div className="responsive-grid-2">
                   <div className="form-group">
                     <label className="form-label">سعر التكلفة والشراء (EGP)</label>
                     <input

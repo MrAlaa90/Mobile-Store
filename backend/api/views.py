@@ -9,12 +9,23 @@ from cryptography.hazmat.primitives.asymmetric import padding
 from django.conf import settings
 from django.utils import timezone
 from rest_framework import status
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import BasePermission, IsAuthenticated, SAFE_METHODS
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.viewsets import ModelViewSet
+from rest_framework_simplejwt.tokens import RefreshToken
 
-from .models import Customer, Device, Inventory, License, Repair, Sale, Token
+from .models import (
+    Customer,
+    Device,
+    Inventory,
+    License,
+    Repair,
+    Sale,
+    Token,
+    User,
+    create_trial_license_for_user,
+)
 from .serializers import (
     CustomerSerializer,
     DeviceSerializer,
@@ -22,12 +33,40 @@ from .serializers import (
     LicenseSerializer,
     RepairSerializer,
     SaleSerializer,
+    StoreRegistrationSerializer,
+    UserSerializer,
 )
+
+
+class HasActiveLicenseOrReadOnly(BasePermission):
+    """
+    Enforces SaaS subscription and trial limits.
+    Store owners whose 20-day trial or annual subscription has expired can view historical
+    records (GET), but cannot modify or insert new records until renewing.
+    Superusers bypass this check.
+    """
+    message = "انتهت فترة الاشتراك التجريبية (20 يوماً) أو الاشتراك السنوي. يرجى التجديد للاستمرار في إجراء العمليات."
+
+    def has_permission(self, request, view):
+        if not request.user or not request.user.is_authenticated:
+            return False
+        if request.user.is_superuser or request.user.is_staff:
+            return True
+        if request.method in SAFE_METHODS:
+            return True
+        today = timezone.localdate()
+        License.objects.filter(user=request.user, status='active', end_date__lt=today).update(status='expired')
+        return License.objects.filter(
+            user=request.user,
+            status='active',
+            start_date__lte=today,
+            end_date__gte=today
+        ).exists()
 
 
 class CustomerViewSet(ModelViewSet):
     serializer_class = CustomerSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, HasActiveLicenseOrReadOnly]
 
     def get_queryset(self):
         return Customer.objects.filter(user=self.request.user).order_by('-created_at')
@@ -38,7 +77,7 @@ class CustomerViewSet(ModelViewSet):
 
 class InventoryViewSet(ModelViewSet):
     serializer_class = InventorySerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, HasActiveLicenseOrReadOnly]
 
     def get_queryset(self):
         qs = Inventory.objects.filter(user=self.request.user).order_by('-created_at')
@@ -66,7 +105,7 @@ class HealthCheckView(APIView):
 
 class SaleViewSet(ModelViewSet):
     serializer_class = SaleSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, HasActiveLicenseOrReadOnly]
 
     def get_queryset(self):
         return Sale.objects.filter(user=self.request.user).order_by('-date')
@@ -86,7 +125,7 @@ class SaleViewSet(ModelViewSet):
 
 class RepairViewSet(ModelViewSet):
     serializer_class = RepairSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, HasActiveLicenseOrReadOnly]
 
     def get_queryset(self):
         return Repair.objects.filter(user=self.request.user).order_by('-created_at')
@@ -103,6 +142,46 @@ class DeviceViewSet(ModelViewSet):
         return Device.objects.filter(user=self.request.user).order_by('-created_at')
 
 
+class StoreRegistrationView(APIView):
+    """
+    Public endpoint: Allows a new store owner to register their store.
+    Automatically generates an isolated tenant account with an active 20-day trial license.
+    """
+    permission_classes = []
+
+    def post(self, request):
+        serializer = StoreRegistrationSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        data = serializer.validated_data
+        user = User.objects.create_user(
+            username=data['username'],
+            password=data['password'],
+            email=data.get('email', ''),
+            name=data['store_name'],
+            store_name=data['store_name'],
+            phone=data.get('phone', ''),
+            role='user',
+        )
+
+        license_obj = user.get_active_license()
+        if not license_obj:
+            license_obj = create_trial_license_for_user(user, days=20, max_devices=3)
+
+        refresh = RefreshToken.for_user(user)
+
+        return Response({
+            "message": "تم إنشاء حساب المتجر وتفعيل الفترة التجريبية (20 يوماً) بنجاح!",
+            "user": UserSerializer(user).data,
+            "license": LicenseSerializer(license_obj).data,
+            "tokens": {
+                "access": str(refresh.access_token),
+                "refresh": str(refresh),
+            }
+        }, status=status.HTTP_201_CREATED)
+
+
 class LicenseCheckView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -111,6 +190,13 @@ class LicenseCheckView(APIView):
         hardware_id = request.query_params.get('hardware_id')
         today = timezone.localdate()
 
+        # Auto-expire licenses whose end date has passed
+        License.objects.filter(
+            user=user,
+            status='active',
+            end_date__lt=today
+        ).update(status='expired')
+
         licenses = License.objects.filter(
             user=user,
             status='active',
@@ -118,34 +204,59 @@ class LicenseCheckView(APIView):
             end_date__gte=today,
         )
 
+        if not licenses.exists():
+            return Response({
+                "error": "license_expired",
+                "detail": "انتهت فترة الرخصة التجريبية (20 يوماً) أو الاشتراك السنوي لهذا المتجر. يرجى التواصل مع الإدارة لتجديد الاشتراك.",
+                "status": "expired"
+            }, status=status.HTTP_403_FORBIDDEN)
+
+        active_license = licenses.first()
+
         if hardware_id:
             device = Device.objects.filter(user=user, hardware_id=hardware_id).first()
             if device:
-                if device.license and device.license.status == 'active':
-                    licenses = licenses.filter(id=device.license_id)
-                elif not device.license and licenses.exists():
-                    # Bind existing device to available active license
-                    active_license = licenses.first()
-                    device.license = active_license
-                    device.save(update_fields=['license'])
-                    licenses = licenses.filter(id=active_license.id)
-                else:
-                    licenses = License.objects.none()
-            else:
-                # Register new device for user and bind to first active license if available
-                active_license = licenses.first()
-                if active_license:
-                    Device.objects.create(
-                        user=user,
-                        hardware_id=hardware_id,
-                        license=active_license,
-                        name=f"Terminal-{hardware_id[:8]}"
-                    )
-                    licenses = licenses.filter(id=active_license.id)
-                else:
-                    licenses = License.objects.none()
+                if not device.is_active:
+                    return Response({
+                        "error": "device_disabled",
+                        "detail": "تم تعطيل هذا الجهاز من قبل إدارة المتجر."
+                    }, status=status.HTTP_403_FORBIDDEN)
 
-        serializer = LicenseSerializer(licenses, many=True)
+                if device.license != active_license:
+                    device.license = active_license
+                device.last_seen = timezone.now()
+                device.save(update_fields=['license', 'last_seen'])
+                result_licenses = [active_license]
+            else:
+                # Enforce max_devices limit per license
+                current_active_devices = Device.objects.filter(
+                    user=user,
+                    license=active_license,
+                    is_active=True
+                ).count()
+
+                if current_active_devices >= active_license.max_devices:
+                    return Response({
+                        "error": "max_devices_exceeded",
+                        "detail": f"تم الوصول للحد الأقصى للأجهزة المصرح بها لهذا المتجر ({active_license.max_devices} أجهزة). يرجى إلغاء ربط أحد الأجهزة السابقة أو ترقية باقة الاشتراك.",
+                        "max_devices": active_license.max_devices,
+                        "current_devices": current_active_devices,
+                    }, status=status.HTTP_403_FORBIDDEN)
+
+                # Register new device bound to this license
+                device = Device.objects.create(
+                    user=user,
+                    hardware_id=hardware_id,
+                    license=active_license,
+                    name=f"Terminal-{hardware_id[:8]}",
+                    device_type='desktop',
+                    is_active=True
+                )
+                result_licenses = [active_license]
+        else:
+            result_licenses = licenses
+
+        serializer = LicenseSerializer(result_licenses, many=True)
         return Response(serializer.data)
 
 
@@ -172,12 +283,25 @@ class OfflineTokenView(APIView):
             active_license = licenses.first()
             if not active_license:
                 return Response({'error': 'No active license available to bind this device'}, status=status.HTTP_403_FORBIDDEN)
+
+            # Check max devices limit
+            current_active_devices = Device.objects.filter(user=user, license=active_license, is_active=True).count()
+            if current_active_devices >= active_license.max_devices:
+                return Response({
+                    'error': f'Max devices limit reached ({active_license.max_devices}). Please unbind an old device.'
+                }, status=status.HTTP_403_FORBIDDEN)
+
             device = Device.objects.create(
                 user=user,
                 hardware_id=hardware_id,
                 license=active_license,
-                name=f"Terminal-{hardware_id[:8]}"
+                name=f"Terminal-{hardware_id[:8]}",
+                device_type='desktop',
+                is_active=True
             )
+
+        if not device.is_active:
+            return Response({'error': 'This device has been deactivated'}, status=status.HTTP_403_FORBIDDEN)
 
         if not device.license or device.license.status != 'active':
             return Response({'error': 'Device does not have an active license'}, status=status.HTTP_403_FORBIDDEN)
@@ -223,4 +347,5 @@ class OfflineTokenView(APIView):
             'payload': payload,
             'signature': signature_b64,
         })
+
 

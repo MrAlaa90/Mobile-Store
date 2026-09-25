@@ -21,6 +21,7 @@ __pycache__/
 
 # Build & Output
 dist/
+dist_installers/
 build/
 *.egg-info/
 frontend/dist/
