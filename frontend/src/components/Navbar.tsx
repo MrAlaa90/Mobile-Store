@@ -34,226 +34,113 @@ const Navbar: React.FC<NavbarProps> = ({ username, onLogout }) => {
 
   return (
     <>
-      <header style={{
-      background: 'var(--bg-glass)',
-      backdropFilter: 'blur(16px)',
-      WebkitBackdropFilter: 'blur(16px)',
-      borderBottom: '1px solid var(--border-color)',
-      position: 'sticky',
-      top: 0,
-      zIndex: 100,
-      transition: 'all var(--transition-normal)'
-    }}>
-      <div style={{
-        maxWidth: 1360,
-        margin: '0 auto',
-        padding: '12px 24px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        flexWrap: 'wrap',
-        gap: 16
-      }}>
-        {/* Brand & Logo */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+      <header className="navbar-header">
+      <div className="navbar-container">
+        {/* Main Row: Brand (Left), Desktop Nav (Center), Desktop Actions (Right) */}
+        <div className="navbar-main-row">
+          {/* Brand & Logo */}
           <div
             onClick={() => navigate('/')}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 10,
-              cursor: 'pointer',
-              textDecoration: 'none'
-            }}
+            className="navbar-brand"
           >
-            <div style={{
-              width: 38,
-              height: 38,
-              borderRadius: '10px',
-              background: 'linear-gradient(135deg, #0284c7, #38bdf8)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '1.25rem',
-              boxShadow: '0 4px 12px rgba(2, 132, 199, 0.4)'
-            }}>
-              📱
-            </div>
+            <div className="navbar-logo-icon">📱</div>
             <div>
-              <div style={{ fontWeight: 800, fontSize: '1.15rem', color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
-                Mobile-Store <span style={{ color: 'var(--primary-light)', fontSize: '0.85rem', fontWeight: 600 }}>POS</span>
+              <div className="navbar-brand-name">
+                Mobile-Store <span className="navbar-brand-badge">POS</span>
               </div>
-              <div className="nav-hide-mobile" style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 5 }}>
-                <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: '#10b981', display: 'inline-block' }}></span>
+              <div className="navbar-brand-status">
+                <span className="navbar-status-indicator"></span>
                 System Connected
               </div>
             </div>
           </div>
-        </div>
 
-        {/* Navigation Tabs (Desktop) */}
-        <nav className="desktop-nav" style={{
-          alignItems: 'center',
-          gap: 6,
-          background: 'var(--bg-surface-elevated)',
-          padding: '4px',
-          borderRadius: '12px',
-          border: '1px solid var(--border-color)'
-        }}>
-          {navLinks.map((link) => {
-            const isActive = location.pathname === link.path;
-            return (
-              <Link
-                key={link.path}
-                to={link.path}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  padding: '7px 14px',
-                  borderRadius: '8px',
-                  fontSize: '0.85rem',
-                  fontWeight: isActive ? 700 : 500,
-                  textDecoration: 'none',
-                  color: isActive ? '#ffffff' : 'var(--text-secondary)',
-                  background: isActive ? 'linear-gradient(135deg, #0284c7, #2563eb)' : 'transparent',
-                  boxShadow: isActive ? '0 2px 8px rgba(37, 99, 235, 0.35)' : 'none',
-                  transition: 'all var(--transition-fast)'
-                }}
-              >
-                <span>{link.icon}</span>
-                <span>{link.label}</span>
-              </Link>
-            );
-          })}
-        </nav>
+          {/* Navigation Tabs (Desktop Only) */}
+          <nav className="desktop-nav">
+            {navLinks.map((link) => {
+              const isActive = location.pathname === link.path;
+              return (
+                <Link
+                  key={link.path}
+                  to={link.path}
+                  className={`desktop-nav-link ${isActive ? 'active' : ''}`}
+                >
+                  <span>{link.icon}</span>
+                  <span>{link.label}</span>
+                </Link>
+              );
+            })}
+          </nav>
 
-        {/* Right Tools (Desktop Only) */}
-        <div className="desktop-actions-only" style={{ alignItems: 'center', gap: 8 }}>
-          {/* Downloads Center Button */}
-          <button
-            onClick={() => setShowDownloads(true)}
-            style={{
-              padding: '7px 11px',
-              borderRadius: '10px',
-              border: '1px solid var(--primary-border, rgba(2, 132, 199, 0.4))',
-              background: 'linear-gradient(135deg, rgba(2, 132, 199, 0.15), rgba(56, 189, 248, 0.15))',
-              color: 'var(--primary-light, #0284c7)',
-              cursor: 'pointer',
-              fontSize: '0.82rem',
-              fontWeight: 700,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-              transition: 'all var(--transition-fast)'
-            }}
-            title="تحميل تطبيق الموبايل وبرنامج الديسكتوب"
-          >
-            <span style={{ fontSize: '1rem' }}>📥</span>
-            <span>تنزيل التطبيقات</span>
-          </button>
+          {/* Right Tools (Desktop Only) */}
+          <div className="desktop-actions">
+            {/* Downloads Center Button */}
+            <button
+              onClick={() => setShowDownloads(true)}
+              className="nav-action-btn btn-downloads"
+              title="تحميل تطبيق الموبايل وبرنامج الديسكتوب"
+            >
+              <span style={{ fontSize: '1rem' }}>📥</span>
+              <span>تنزيل التطبيقات</span>
+            </button>
 
-          {/* Theme Switcher Button */}
-          <button
-            onClick={toggleTheme}
-            aria-label="Toggle Theme"
-            style={{
-              width: 36,
-              height: 36,
-              borderRadius: '10px',
-              border: '1px solid var(--border-color)',
-              background: 'var(--bg-surface-elevated)',
-              color: 'var(--text-primary)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-              fontSize: '1rem',
-              transition: 'all var(--transition-fast)'
-            }}
-            title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-          >
-            {theme === 'dark' ? '☀️' : '🌙'}
-          </button>
+            {/* Theme Switcher Button */}
+            <button
+              onClick={toggleTheme}
+              aria-label="Toggle Theme"
+              className="nav-action-btn btn-theme"
+              title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+            >
+              {theme === 'dark' ? '☀️' : '🌙'}
+            </button>
 
-          {/* User Profile */}
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            padding: '4px 8px',
-            background: 'var(--bg-surface-elevated)',
-            border: '1px solid var(--border-color)',
-            borderRadius: '10px'
-          }}>
-            <div style={{
-              width: 28,
-              height: 28,
-              borderRadius: '50%',
-              background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '0.75rem',
-              fontWeight: 800,
-              color: '#fff'
-            }}>
-              {(username || 'U')[0].toUpperCase()}
+            {/* User Profile */}
+            <div className="nav-user-pill">
+              <div className="nav-user-avatar">
+                {(username || 'U')[0].toUpperCase()}
+              </div>
+              <div className="nav-user-details">
+                <span className="nav-user-name">
+                  {username || 'Store Admin'}
+                </span>
+                <span className="nav-user-role">Online Terminal</span>
+              </div>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
-              <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-primary)' }}>
-                {username || 'Store Admin'}
-              </span>
-              <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>Online Terminal</span>
-            </div>
+
+            {/* Logout Button */}
+            <button
+              onClick={onLogout}
+              className="nav-action-btn btn-logout"
+              title="تسجيل الخروج من النظام"
+            >
+              <span>🚪</span>
+              <span>خروج</span>
+            </button>
           </div>
-
-          {/* Logout Button */}
-          <button
-            onClick={onLogout}
-            style={{
-              padding: '7px 11px',
-              borderRadius: '10px',
-              border: '1px solid rgba(239, 68, 68, 0.3)',
-              background: 'rgba(239, 68, 68, 0.12)',
-              color: '#ef4444',
-              cursor: 'pointer',
-              fontSize: '0.82rem',
-              fontWeight: 600,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 4,
-              transition: 'all var(--transition-fast)'
-            }}
-            title="تسجيل الخروج من النظام"
-          >
-            <span>🚪</span>
-            <span>خروج</span>
-          </button>
         </div>
 
-        {/* Dedicated Mobile Controls Strip (Mobile Only) */}
-        <div className="mobile-user-strip">
-          <div className="mobile-user-header">
-            <div className="mobile-user-info">
+        {/* Dedicated Mobile Controls Strip (Mobile Devices <= 768px ONLY) */}
+        <div className="mobile-header-subbar">
+          <div className="mobile-user-tag">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <div className="mobile-user-avatar">
                 {(username || 'U')[0].toUpperCase()}
               </div>
-              <div>
-                <span style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>المستخدم: </span>
-                <strong style={{ color: 'var(--text-primary)', fontSize: '0.9rem' }}>{username || 'Store Admin'}</strong>
+              <div className="mobile-user-text">
+                <span className="mobile-user-label">المستخدم: </span>
+                <strong className="mobile-user-name">{username || 'Store Admin'}</strong>
               </div>
             </div>
-            <span className="mobile-status-dot">
-              <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: '#10b981', display: 'inline-block' }}></span>
+            <span className="mobile-user-status">
+              <span className="status-dot"></span>
               متصل
             </span>
           </div>
 
-          <div className="mobile-quick-actions">
+          <div className="mobile-actions-grid">
             <button
               onClick={() => setShowDownloads(true)}
-              className="btn-chip-downloads"
+              className="mobile-btn-download"
               title="تحميل تطبيق الموبايل وبرنامج الديسكتوب"
             >
               <span>📥</span>
@@ -261,14 +148,14 @@ const Navbar: React.FC<NavbarProps> = ({ username, onLogout }) => {
             </button>
             <button
               onClick={toggleTheme}
-              className="btn-chip-theme"
+              className="mobile-btn-theme"
               title="تبديل الوضع الليلي / الفاتح"
             >
               <span>{theme === 'dark' ? '☀️ فاتح' : '🌙 داكن'}</span>
             </button>
             <button
               onClick={onLogout}
-              className="btn-chip-logout"
+              className="mobile-btn-logout"
               title="تسجيل الخروج من النظام"
             >
               <span>🚪</span>
