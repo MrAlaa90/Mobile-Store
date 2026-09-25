@@ -170,6 +170,10 @@ class MobileStoreApp(QWidget):
         hw_display.setStyleSheet("color: #777; font-size: 11px;")
         layout.addWidget(hw_display)
 
+        server_display = QLabel(f"Connected Server: {API_BASE_URL}")
+        server_display.setStyleSheet("color: #0ea5e9; font-size: 11px; font-weight: 500;")
+        layout.addWidget(server_display)
+
         form_layout = QFormLayout()
         self.username_input = QLineEdit()
         self.username_input.setText("admin")
@@ -250,8 +254,20 @@ class MobileStoreApp(QWidget):
             )
 
             if response.status_code != 200:
-                self.verify_status.setText("Status: Invalid credentials")
-                QMessageBox.warning(self, "Login Failed", "Invalid username or password.")
+                err_msg = "Invalid username or password."
+                try:
+                    err_data = response.json()
+                    if isinstance(err_data, dict) and "detail" in err_data:
+                        err_msg = err_data["detail"]
+                except Exception:
+                    pass
+
+                self.verify_status.setText(f"Status: {err_msg}")
+                QMessageBox.warning(
+                    self,
+                    "Login Failed",
+                    f"{err_msg}\n\nServer: {API_BASE_URL}\n(Make sure your account exists on this specific server)"
+                )
                 return
 
             data = response.json()
