@@ -818,27 +818,27 @@ h1, h2, h3, h4, h5, h6 {
     display: inline-block;
   }
 
-  /* Mobile Actions Grid: 3 solid buttons perfectly spaced */
+  /* Mobile Actions Grid: 4 solid buttons perfectly spaced */
   .mobile-actions-grid {
     display: grid;
-    grid-template-columns: 1.3fr 1fr 1fr;
-    gap: 6px;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 5px;
     width: 100%;
   }
 
   .mobile-actions-grid button {
     height: 38px;
     border-radius: 8px;
-    font-size: 0.75rem;
+    font-size: 0.72rem;
     font-weight: 700;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 4px;
+    gap: 3px;
     cursor: pointer;
     white-space: nowrap;
     transition: all var(--transition-fast);
-    padding: 0 4px;
+    padding: 0 2px;
     overflow: hidden;
     text-overflow: ellipsis;
   }
@@ -847,6 +847,12 @@ h1, h2, h3, h4, h5, h6 {
     background: linear-gradient(135deg, rgba(2, 132, 199, 0.15), rgba(56, 189, 248, 0.15));
     border: 1px solid rgba(2, 132, 199, 0.4);
     color: var(--primary-light, #0284c7);
+  }
+
+  .mobile-btn-devices {
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(168, 85, 247, 0.15));
+    border: 1px solid rgba(139, 92, 246, 0.4);
+    color: #c084fc;
   }
 
   .mobile-btn-theme {

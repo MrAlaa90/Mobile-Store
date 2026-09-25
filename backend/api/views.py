@@ -139,7 +139,10 @@ class DeviceViewSet(ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return Device.objects.filter(user=self.request.user).order_by('-created_at')
+        user = self.request.user
+        if user.is_staff or user.is_superuser:
+            return Device.objects.all().select_related('user', 'license').order_by('-created_at')
+        return Device.objects.filter(user=user).select_related('license').order_by('-created_at')
 
 
 class StoreRegistrationView(APIView):

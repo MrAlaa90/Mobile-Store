@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTheme } from '../context/ThemeContext';
+import DeviceManagementModal from './DeviceManagementModal';
 
 interface NavbarProps {
   username?: string;
@@ -13,6 +14,7 @@ const Navbar: React.FC<NavbarProps> = ({ username, onLogout }) => {
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
   const [showDownloads, setShowDownloads] = useState(false);
+  const [showDevices, setShowDevices] = useState(false);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -84,6 +86,21 @@ const Navbar: React.FC<NavbarProps> = ({ username, onLogout }) => {
               <span>تنزيل التطبيقات</span>
             </button>
 
+            {/* Devices Center Button */}
+            <button
+              onClick={() => setShowDevices(true)}
+              className="nav-action-btn"
+              title="إدارة الأجهزة المتصلة ومسحها"
+              style={{
+                borderColor: 'rgba(139, 92, 246, 0.4)',
+                background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(168, 85, 247, 0.15))',
+                color: '#c084fc'
+              }}
+            >
+              <span style={{ fontSize: '1rem' }}>💻</span>
+              <span>الأجهزة المتصلة</span>
+            </button>
+
             {/* Theme Switcher Button */}
             <button
               onClick={toggleTheme}
@@ -144,7 +161,15 @@ const Navbar: React.FC<NavbarProps> = ({ username, onLogout }) => {
               title="تحميل تطبيق الموبايل وبرنامج الديسكتوب"
             >
               <span>📥</span>
-              <span>تنزيل التطبيقات</span>
+              <span>التطبيقات</span>
+            </button>
+            <button
+              onClick={() => setShowDevices(true)}
+              className="mobile-btn-devices"
+              title="إدارة الأجهزة المتصلة ومسحها"
+            >
+              <span>💻</span>
+              <span>الأجهزة</span>
             </button>
             <button
               onClick={toggleTheme}
@@ -339,6 +364,12 @@ const Navbar: React.FC<NavbarProps> = ({ username, onLogout }) => {
       </div>,
       document.body
     )}
+
+    {/* Device Management Modal Dialog */}
+    <DeviceManagementModal
+      isOpen={showDevices}
+      onClose={() => setShowDevices(false)}
+    />
   </>
   );
 };

@@ -23,10 +23,18 @@ class LicenseSerializer(serializers.ModelSerializer):
 
 
 class DeviceSerializer(serializers.ModelSerializer):
+    username = serializers.CharField(source='user.username', read_only=True)
+    store_name = serializers.CharField(source='user.store_name', read_only=True)
+    license_key = serializers.CharField(source='license.license_key', read_only=True, default='')
+
     class Meta:
         model = Device
-        fields = ['id', 'name', 'hardware_id', 'device_type', 'is_active', 'license', 'created_at', 'last_seen']
-        read_only_fields = ['id', 'created_at', 'last_seen']
+        fields = [
+            'id', 'name', 'hardware_id', 'device_type', 'is_active',
+            'license', 'license_key', 'username', 'store_name',
+            'created_at', 'last_seen'
+        ]
+        read_only_fields = ['id', 'created_at', 'last_seen', 'username', 'store_name', 'license_key']
 
 
 class CustomerSerializer(serializers.ModelSerializer):
