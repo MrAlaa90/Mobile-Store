@@ -5,8 +5,12 @@ a = Analysis(
     ['main.py'],
     pathex=[],
     binaries=[],
-    datas=[('keys/public_key.pem', 'keys')],
-    hiddenimports=[],
+    datas=[
+        ('keys/public_key.pem', 'keys'),
+        ('app_icon.png', '.'),
+        ('app_icon.ico', '.'),
+    ],
+    hiddenimports=['updater', 'app_window', 'sync_worker'],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
@@ -32,6 +36,7 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
+    icon='app_icon.ico',
 )
 coll = COLLECT(
     exe,

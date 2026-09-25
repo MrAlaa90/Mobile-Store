@@ -19,7 +19,7 @@ from PyQt6.QtWidgets import (
     QFrame,
 )
 
-CURRENT_APP_VERSION = "1.0.0"
+CURRENT_APP_VERSION = "1.1.0"
 
 
 class DownloadWorker(QThread):
