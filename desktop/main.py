@@ -15,7 +15,7 @@ from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QIcon
 from PyQt6.QtWidgets import (
     QApplication,
@@ -42,6 +42,7 @@ os.makedirs(DATA_DIR, exist_ok=True)
 if BUNDLE_DIR not in sys.path:
     sys.path.insert(0, BUNDLE_DIR)
 from app_window import StoreMainWindow
+from updater import check_updates_async, CURRENT_APP_VERSION
 
 API_BASE_URL = os.environ.get("API_BASE_URL", "http://34.175.186.221/api")
 WEB_URL = os.environ.get("WEB_URL", "http://34.175.186.221/")
@@ -201,10 +202,45 @@ class MobileStoreApp(QWidget):
         self.login_button.clicked.connect(self.login_and_verify)
         layout.addWidget(self.login_button)
 
+        # Bottom Bar: Status + Check for Updates
+        bottom_bar = QHBoxLayout()
         self.verify_status = QLabel("Status: Ready")
-        layout.addWidget(self.verify_status)
+        bottom_bar.addWidget(self.verify_status)
+        bottom_bar.addStretch()
+
+        self.update_btn = QPushButton("🚀 Check Updates")
+        self.update_btn.setStyleSheet("""
+            QPushButton {
+                background: transparent;
+                color: #0284c7;
+                border: 1px solid #38bdf8;
+                border-radius: 4px;
+                padding: 3px 8px;
+                font-size: 11px;
+                font-weight: 600;
+            }
+            QPushButton:hover {
+                background: #e0f2fe;
+            }
+        """)
+        self.update_btn.clicked.connect(lambda: check_updates_async(
+            api_base_url=API_BASE_URL,
+            current_version=CURRENT_APP_VERSION,
+            manual=True,
+            parent=self
+        ))
+        bottom_bar.addWidget(self.update_btn)
+        layout.addLayout(bottom_bar)
 
         self.setLayout(layout)
+
+        # Silent update check 2 seconds after login window opens
+        QTimer.singleShot(2500, lambda: check_updates_async(
+            api_base_url=API_BASE_URL,
+            current_version=CURRENT_APP_VERSION,
+            manual=False,
+            parent=self
+        ))
 
     def verify_offline_token(self):
         """Attempts to validate an offline token or license.json locally."""

@@ -345,3 +345,67 @@ class OfflineTokenView(APIView):
         })
 
 
+class AppUpdateCheckView(APIView):
+    """
+    Public endpoint for desktop & mobile apps to check for newer releases.
+    Returns latest version info, release notes, and download URLs.
+    """
+    permission_classes = []
+
+    def get(self, request):
+        current_version = request.query_params.get('current_version', '1.0.0')
+        platform_name = request.query_params.get('platform', 'windows').lower()
+
+        latest_version = os.environ.get('APP_LATEST_VERSION', '1.1.0')
+        min_required_version = os.environ.get('APP_MIN_VERSION', '1.0.0')
+
+        def parse_version(v):
+            clean = v.lstrip('v').split('-')[0]
+            parts = [int(p) for p in clean.split('.') if p.isdigit()]
+            return tuple((parts + [0, 0, 0])[:3])
+
+        try:
+            is_update_available = parse_version(latest_version) > parse_version(current_version)
+        except Exception:
+            is_update_available = False
+
+        try:
+            is_mandatory = parse_version(current_version) < parse_version(min_required_version)
+        except Exception:
+            is_mandatory = False
+
+        scheme = 'https' if request.is_secure() else 'http'
+        host = request.get_host()
+        base_url = f"{scheme}://{host}"
+
+        if platform_name == 'windows':
+            download_url = f"{base_url}/downloads/MobileStore-Setup.exe"
+            filename = "MobileStore-Setup.exe"
+            size_mb = 31.9
+        else:
+            download_url = f"{base_url}/downloads/MobileStore.apk"
+            filename = "MobileStore.apk"
+            size_mb = 51.9
+
+        return Response({
+            "latest_version": latest_version,
+            "current_version": current_version,
+            "min_required_version": min_required_version,
+            "is_update_available": is_update_available,
+            "mandatory": is_mandatory,
+            "filename": filename,
+            "download_url": download_url,
+            "download_size_mb": size_mb,
+            "release_notes": [
+                "✨ زر التحويل السريع بين الوضع الداكن والوضع الفاتح (Dark / Light Theme)",
+                "💾 ميزة النسخ الاحتياطي الفوري لكافة بيانات المتجر (One-Click Backup)",
+                "💬 دعم فني مباشر عبر واتساب مع بيانات تشخيصية تلقائية للمتجر والعتاد",
+                "🛡️ تحسينات أمنية وحماية البيانات وعزل تام لحسابات المتاجر",
+                "🎨 هوية بصرية عصرية جديدة وأيقونات ثلاثية الأبعاد فخمة",
+                "⚡ تحسينات في سرعة وثبات المزامنة دون انقطاع أثناء عدم توفر الإنترنت",
+            ],
+            "published_at": "2026-09-25T21:00:00Z"
+        })
+
+
+

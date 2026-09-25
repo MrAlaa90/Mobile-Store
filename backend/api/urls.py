@@ -11,6 +11,7 @@ from .views import (
     RepairViewSet,
     SaleViewSet,
     StoreRegistrationView,
+    AppUpdateCheckView,
 )
 
 router = DefaultRouter()
@@ -22,6 +23,7 @@ router.register('devices', DeviceViewSet, basename='device')
 
 urlpatterns = [
     path('health/', HealthCheckView.as_view(), name='health_check'),
+    path('app/check-update/', AppUpdateCheckView.as_view(), name='app_check_update'),
     path('', include(router.urls)),
     path('auth/register-store/', StoreRegistrationView.as_view(), name='store_register'),
     path('auth/login/', TokenObtainPairView.as_view(), name='token_obtain_pair'),

@@ -30,6 +30,7 @@ from PyQt6.QtWidgets import (
 )
 
 from sync_worker import SyncWorker
+from updater import check_updates_async, CURRENT_APP_VERSION
 
 
 REPAIR_STATUS_CHOICES = [
@@ -625,6 +626,26 @@ class StoreMainWindow(QWidget):
         self.support_btn.clicked.connect(self.open_support)
         top_bar.addWidget(self.support_btn)
 
+        # In-App Software Update Button
+        self.update_btn = QPushButton("🚀 Updates")
+        self.update_btn.setToolTip("التحقق من وجود تحديثات جديدة للبرنامج وتثبيتها بنقرة واحدة (Check for Updates)")
+        self.update_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #4f46e5;
+                color: #ffffff;
+                font-size: 11px;
+                font-weight: bold;
+                padding: 3px 10px;
+                border-radius: 4px;
+                border: none;
+            }
+            QPushButton:hover {
+                background-color: #4338ca;
+            }
+        """)
+        self.update_btn.clicked.connect(lambda: self.trigger_check_update(manual=True))
+        top_bar.addWidget(self.update_btn)
+
         main_layout.addLayout(top_bar)
 
         # Tabs: matching screenshot tabs
@@ -642,6 +663,18 @@ class StoreMainWindow(QWidget):
 
         # Apply saved or initial theme
         self.apply_theme(self.current_theme)
+
+        # Silent check for updates 3 seconds after startup
+        QTimer.singleShot(3000, lambda: self.trigger_check_update(manual=False))
+
+    def trigger_check_update(self, manual=False):
+        """Checks for software updates via MobileStore cloud backend."""
+        check_updates_async(
+            api_base_url=self.api_base_url,
+            current_version=CURRENT_APP_VERSION,
+            manual=manual,
+            parent=self
+        )
 
     def apply_theme(self, theme):
         """Applies Dark or Light stylesheet across the entire application and updates UI state."""

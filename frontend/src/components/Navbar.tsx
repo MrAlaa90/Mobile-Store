@@ -277,11 +277,14 @@ const Navbar: React.FC<NavbarProps> = ({ username, onLogout }) => {
                   💻
                 </div>
                 <div>
-                  <h4 style={{ margin: 0, fontSize: '0.96rem', fontWeight: 700 }}>
+                  <h4 style={{ margin: 0, fontSize: '0.96rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
                     برنامج الكاشير والديسكتوب (Windows)
+                    <span style={{ background: 'linear-gradient(135deg, #0284c7, #38bdf8)', color: '#fff', fontSize: '0.68rem', padding: '2px 8px', borderRadius: '10px', fontWeight: 700 }}>
+                      v1.1.0 جديد
+                    </span>
                   </h4>
                   <p style={{ margin: '4px 0 0 0', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                    ملف تثبيت كامل <code>MobileStore-Setup.exe</code> مع دعم الأوفلاين وحماية العتاد
+                    ملف تثبيت كامل <code>MobileStore-Setup.exe</code> مع دعم التحديث التلقائي، الوضع الداكن، والنسخ الاحتياطي
                   </p>
                 </div>
               </div>
